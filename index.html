@@ -13,11 +13,13 @@
     --text:#ffffff;
     --muted:#cbd5e1;
 
-    /* Accent JAUNE (couleur du logo) */
-    --accent:#fbbf24;       /* amber-400 */
-    --accent-2:#fde047;     /* amber-300 */
+    /* Jaune (identité) */
+    --accent:#fbbf24;
+    --accent-2:#fde047;
+
+    /* Status */
+    --ok:#22c55e;        /* vert */
     --danger:#ef4444;
-    --ok:#22c55e;
     --shadow:rgba(0,0,0,.45);
   }
 
@@ -27,30 +29,19 @@
     font:16px/1.55 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
     color:var(--text);
     background:
-      radial-gradient(80vw 60vh at 70% -20%, rgba(253, 224, 71, .06), transparent 60%),
-      radial-gradient(70vw 50vh at -10% 0%, rgba(251, 191, 36, .06), transparent 60%),
+      radial-gradient(80vw 60vh at 70% -20%, rgba(253,224,71,.06), transparent 60%),
+      radial-gradient(70vw 50vh at -10% 0%, rgba(251,191,36,.06), transparent 60%),
       var(--bg) url('https://images.unsplash.com/photo-1517817748496-62bc3047b9ff?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat fixed;
     min-height:100vh;
   }
-  /* Watermark logo en fond (grand, discret) */
+  /* Logo watermark */
   .wm{
     position:fixed; inset:0; pointer-events:none; z-index:0;
-    background:
-      url('/assets/mammon.png') center 35% / min(80vmin,900px) no-repeat;
+    background:url('/assets/mammon.png') center 35% / min(80vmin,900px) no-repeat;
     opacity:.09; filter: drop-shadow(0 0 18px rgba(0,0,0,.6));
   }
   .overlay{position:relative; z-index:1; background:linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.35)); min-height:100vh;}
   .wrap{max-width:980px; margin:0 auto; padding:18px 18px 60px;}
-
-  /* Bannière info */
-  .announce{
-    display:flex; align-items:center; justify-content:center; gap:10px;
-    background:linear-gradient(90deg, var(--accent), var(--accent-2));
-    color:#111; font-weight:800; letter-spacing:.2px;
-    border-radius:12px; padding:10px 14px; box-shadow:0 10px 26px var(--shadow); margin-bottom:14px;
-  }
-  .announce small{opacity:.85; font-weight:700}
-  .ann-close{margin-left:auto; border:none; background:#00000022; color:#111; font-weight:900; border-radius:8px; padding:4px 8px; cursor:pointer}
 
   /* Header */
   header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 16px}
@@ -61,6 +52,19 @@
     font-size:11px; font-weight:900; padding:4px 8px; border-radius:999px;
     background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111;
   }
+  .header-right{display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end}
+
+  /* MINI bannière verte (discrète) */
+  .mini-badge{
+    font-size:12px; line-height:1;
+    color:var(--ok);
+    background:rgba(34,197,94,.12);
+    border:1px solid rgba(34,197,94,.45);
+    padding:6px 10px;
+    border-radius:999px;
+    white-space:nowrap;
+  }
+
   .chip{
     border:1px solid var(--panel-border); background:#0f172a; color:#fff;
     padding:6px 10px; border-radius:12px; cursor:pointer;
@@ -118,13 +122,6 @@
 <div class="overlay">
   <div class="wrap">
 
-    <!-- Bannière version SC -->
-    <div class="announce" id="announce" style="display:none">
-      <span id="annText">Mise à jour SC — Timer à jour. Go cook.</span>
-      <small id="annMeta"></small>
-      <button class="ann-close" id="annClose">×</button>
-    </div>
-
     <!-- Header -->
     <header>
       <div class="brand">
@@ -132,7 +129,14 @@
         <div class="brand-title">CZ Timers</div>
         <span class="badge">LIVE</span>
       </div>
-      <button class="chip" id="loginBtn">Admin</button>
+
+      <div class="header-right">
+        <!-- MINI bannière verte (discrète) -->
+        <span class="mini-badge" id="patchBadge" title="Star Citizen patch">
+          Updated for Star Citizen Patch 4.3.0-LIVE (Hotfix 10188864)
+        </span>
+        <button class="chip" id="loginBtn">Admin</button>
+      </div>
     </header>
 
     <!-- Panel Timer -->
@@ -187,10 +191,6 @@
   const OPEN_MIN=60, CLOSED_MIN=120, DOTS=5;
   const OPEN_SEC=OPEN_MIN*60, CLOSED_SEC=CLOSED_MIN*60, CYCLE_SEC=OPEN_SEC+CLOSED_SEC;
 
-  /* Texte bannière — modifie simplement SC_VERSION si tu veux */
-  const SC_VERSION = "SC 4.x";
-  const ANNOUNCE_TEXT = `Mise à jour ${SC_VERSION} — Timer à jour sur la dernière version. Go cook.`;
-
   /* ===== Éléments ===== */
   const elClock=document.getElementById('clock');
   const elStatus=document.getElementById('status');
@@ -211,11 +211,6 @@
   const pwdInput=document.getElementById('pwd');
   const doLoginBtn=document.getElementById('doLogin');
   const closeModal=document.getElementById('closeModal');
-
-  const ann=document.getElementById('announce');
-  const annText=document.getElementById('annText');
-  const annMeta=document.getElementById('annMeta');
-  const annClose=document.getElementById('annClose');
 
   /* ===== State global (API) ===== */
   let cfg={anchor_iso:'2025-09-07T16:53:00Z', manual_offset_seconds:0, paused:false};
@@ -257,11 +252,7 @@
     if(!r.ok){ elMode.textContent='Erreur API: '+r.status; return; }
     cfg=await r.json();
     elMode.textContent='Config globale chargée. Dernière MAJ globale : '+pretty(Date.parse(cfg.anchor_iso));
-    // Bannière
-    annText.textContent = ANNOUNCE_TEXT;
-    annMeta.textContent = 'MAJ globale : '+pretty(Date.parse(cfg.anchor_iso));
-    if(localStorage.getItem('ann_dismiss_v1')!=='1'){ ann.style.display='flex'; }
-    const d=new Date(); inputTime.value=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const d=new Date(); document.getElementById('openTime').value=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
     render();
   }
 
@@ -299,9 +290,6 @@
   };
 
   document.getElementById('reload').onclick= loadCfg;
-
-  /* Bannière dismiss */
-  annClose.onclick = ()=>{ ann.style.display='none'; localStorage.setItem('ann_dismiss_v1','1'); };
 
   /* Go */
   setInterval(render,1000);
