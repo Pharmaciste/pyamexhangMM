@@ -7,14 +7,8 @@
 <meta name="color-scheme" content="dark">
 <style>
   :root{
-    --bg:#0a0d14;
-    --panel:#0b0f1aee;
-    --panel-border:rgba(255,255,255,.08);
-    --text:#ffffff;
-    --ok:#22c55e;
-    --danger:#ef4444;
-    --accent:#fbbf24; --accent-2:#fde047;
-    --shadow:rgba(0,0,0,.45);
+    --bg:#0a0d14;--panel:#0b0f1aee;--panel-border:rgba(255,255,255,.08);
+    --text:#ffffff;--ok:#22c55e;--danger:#ef4444;--accent:#fbbf24;--accent-2:#fde047;--shadow:rgba(0,0,0,.45)
   }
   *{box-sizing:border-box} html,body{margin:0;padding:0}
   body{
@@ -50,7 +44,6 @@
   .meta{margin-top:10px; font-size:12px; opacity:.9}
   .next{margin-top:12px; font-size:13px; opacity:.96}
 
-  /* CTA Privacy */
   .pp-cta-wrap{margin:22px 0 8px; display:flex; justify-content:center}
   .pp-cta{padding:9px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:#0f172a; color:#fff; text-decoration:none}
   .pp-cta:hover{border-color:#334155}
@@ -60,12 +53,6 @@
   .privacy h3{margin:16px 0 6px; font-size:16px; font-weight:800}
   .privacy p, .privacy li{color:#dbeafe}
 
-  /* Discord msg */
-  .discord-msg{margin-bottom:16px; text-align:center; font-size:14px;}
-  .discord-msg a{color:var(--accent); font-weight:bold; text-decoration:none;}
-  .discord-msg a:hover{text-decoration:underline;}
-
-  /* Admin (caché par mot de passe) */
   .btn{padding:9px 12px; border-radius:12px; border:1px solid var(--panel-border); background:#0f172a; color:#fff; cursor:pointer}
   .btn.primary{background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111; border-color:transparent; font-weight:900}
   .admin{display:none; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; margin-top:16px}
@@ -93,10 +80,10 @@
       </div>
     </header>
 
-    <!-- Message Discord -->
-    <div class="panel discord-msg">
+    <!-- Discord -->
+    <div class="panel" style="margin-bottom:16px;text-align:center;font-size:14px">
       🚀 Envie de rejoindre la <strong>MAMMON</strong> ? 
-      <a href="https://discord.gg/aUBDScHG" target="_blank" rel="noopener">Rejoins notre Discord ici !</a>
+      <a href="https://discord.gg/aUBDScHG" target="_blank" rel="noopener" style="color:var(--accent);font-weight:bold">Rejoins notre Discord ici !</a>
     </div>
 
     <!-- Timer -->
@@ -113,9 +100,9 @@
       <div class="sub" id="subtitle">Prochaine transition dans --:--:--</div>
 
       <div class="next" id="nextTimes">Prochaine fermeture : — • Prochaine ouverture : —</div>
-      <div class="meta" id="modeMeta">Aucune ancre définie.</div>
+      <div class="meta" id="modeMeta">Initialisation…</div>
 
-      <!-- Admin (caché : apparaît après login) -->
+      <!-- Admin (caché : login requis) -->
       <div class="admin" id="adminPanel">
         <label for="openTime"><strong>Dernière ouverture (HH:MM)</strong> :</label>
         <input type="time" id="openTime" step="60" />
@@ -134,29 +121,11 @@
       <div class="box">
         <h2>Privacy Policy</h2>
         <p><em>Effective Date: September 8, 2025</em></p>
-
-        <p>Welcome! Your privacy matters to us. This Policy explains what we do (and don’t) collect, how we may use cookies/ads in the future, and your rights.</p>
-
-        <h3>Information We Collect</h3>
-        <p>We do <strong>not</strong> collect, sell, or share personal data. Timer preferences are saved in your browser’s <strong>Local Storage</strong> for convenience. This data stays on your device and is never transmitted to our servers.</p>
-
-        <h3>Cookies &amp; Tracking</h3>
-        <p>We currently do not use cookies. In the future, we may enable cookies or similar technologies to show ads (e.g., Google AdSense, Ezoic). These may process non-identifiable data (e.g., page views) to serve relevant ads. You can control or delete cookies in your browser settings at any time.</p>
-
-        <h3>Third-Party Services (Ads)</h3>
-        <p>If/when ads are enabled, third-party ad networks (e.g., Google AdSense, Ezoic) may use cookies and similar tech to deliver and measure ads. Please review their respective privacy policies for details on their processing.</p>
-
+        <p>We do not collect personal data. Preferences may be stored in your browser’s Local Storage.</p>
+        <h3>Cookies &amp; Ads</h3>
+        <p>No cookies currently. If ads are enabled later, you can manage cookies in your browser.</p>
         <h3>Your Rights</h3>
-        <p>Depending on your location, you may have rights under laws such as <strong>GDPR</strong> (EU/EEA/UK) or <strong>CCPA/CPRA</strong> (California), including access, correction, deletion, objection/restriction, and withdrawing consent (where applicable). Because we do not collect personal data, these rights mainly relate to cookie preferences you control in your browser if/when ads are enabled.</p>
-
-        <h3>Data Retention</h3>
-        <p>We do not maintain user profiles or store personal data. Local Storage data remains on your device until you clear it (e.g., “Clear Site Data” in your browser).</p>
-
-        <h3>Children’s Privacy</h3>
-        <p>This site is for a general audience and does not knowingly collect information from children under 13 (or higher local age threshold).</p>
-
-        <h3>Changes to This Policy</h3>
-        <p>We may update this Policy from time to time. We will post changes here with a new Effective Date. Please check this page periodically.</p>
+        <p>GDPR / CCPA rights mostly relate to cookie preferences since we don’t collect personal data.</p>
       </div>
     </section>
 
@@ -178,9 +147,9 @@
 </div>
 
 <script>
-  /* ===== Durées (calibrées) ===== */
-  const OPEN_SEC   = 65 * 60;   // 65:00 -> 3900s
-  const CLOSED_SEC = 7201;      // ~120:01
+  /* ===== Durées exactes ===== */
+  const OPEN_SEC   = 65 * 60;   // 65:00
+  const CLOSED_SEC = 7201;      // ≈120:01
   const DOTS=5;
   const CYCLE_SEC = OPEN_SEC + CLOSED_SEC;
 
@@ -205,11 +174,10 @@
   const doLoginBtn=document.getElementById('doLogin');
   const closeModal=document.getElementById('closeModal');
 
-  /* Privacy */
   const ppBtn=document.getElementById('ppBtn');
   const ppSection=document.getElementById('privacy');
 
-  /* ===== State global ===== */
+  /* ===== State ===== */
   let cfg={anchor_iso:null, manual_offset_seconds:0, paused:false};
   let isAdmin=false, adminPwd=null;
 
@@ -221,29 +189,23 @@
   const anchorMs=()=>Date.parse(cfg.anchor_iso)+(cfg.manual_offset_seconds||0)*1000;
   const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
 
-  /* ===== LED logic ===== */
+  /* ===== LED (ouvert 5x12 min puis 5 min black / fermé ~24 min/LED) ===== */
   function greenCountOpen(remainSec){
-    // ouvert = 65 min : pendant 60 min -> 5..1 LED (chaque 12 min),
-    // puis 5 dernières minutes -> 0 LED (black)
-    if (remainSec <= 5*60) return 0;
-    const eff = Math.min(60*60, remainSec - 5*60);      // secondes “LED-actives”
+    if (remainSec <= 5*60) return 0; // 5 min finales sans LED
+    const eff = Math.min(60*60, remainSec - 5*60);
     return Math.max(0, Math.min(DOTS, Math.ceil(eff / (12*60))));
   }
   function greenCountClosed(remainSec){
-    // fermé ≈ 120:01, LED deviennent vertes par paliers de ~24 min
-    const seg = CLOSED_SEC / DOTS;                      // ~1440.2 s
-    let cnt = DOTS - Math.ceil(remainSec / seg);        // 0..5
+    const seg = CLOSED_SEC / DOTS; // ~1440.2 s ~ 24 min
+    let cnt = DOTS - Math.ceil(remainSec / seg);
     return Math.max(0, Math.min(DOTS, cnt));
   }
-  function updateLeds(isOpen, remain, phaseSec){
-    let green = isOpen ? greenCountOpen(remain) : greenCountClosed(remain);
+  function updateLeds(isOpen, remain){
+    const green = isOpen ? greenCountOpen(remain) : greenCountClosed(remain);
     for(let i=0;i<DOTS;i++) leds[i].className='led '+(i<green?'g':'r');
-    // Texte d’aide
-    if (isOpen){
-      elLedInfo.textContent = `Ouvert : 1 LED = 12 min • dernières 5 min sans LED`;
-    }else{
-      elLedInfo.textContent = `Fermé : 1 LED ≈ 24 min`;
-    }
+    elLedInfo.textContent = isOpen
+      ? 'Ouvert : 1 LED = 12 min • dernières 5 min sans LED'
+      : 'Fermé : 1 LED ≈ 24 min';
   }
 
   /* ===== Rendu ===== */
@@ -269,14 +231,14 @@
     elStatus.textContent = 'Hangar '+(isOpen?'Open':'Closed') + (cfg.paused?' (Paused)':'');
     elSub.textContent = 'Prochaine transition ('+(isOpen?'fermeture':'ouverture')+') dans '+fmt(remain);
 
-    updateLeds(isOpen, remain, phaseSec);
+    updateLeds(isOpen, remain);
 
     const nClose=nextAfter(anchorMs()+OPEN_SEC*1000, CYCLE_SEC*1000, now);
     const nOpen =nextAfter(anchorMs(),                CYCLE_SEC*1000, now);
     elNext.textContent = `Prochaine fermeture : ${pretty(nClose)} • Prochaine ouverture : ${pretty(nOpen)}`;
   }
 
-  /* ===== Admin session (cachée) ===== */
+  /* ===== Admin (caché + mot de passe) ===== */
   function setAdminUI(v){ isAdmin=v; adminPanel.style.display=v?'flex':'none'; if(!v) adminPwd=null; }
   const secretLogo = document.getElementById('secretLogo');
   secretLogo.addEventListener('dblclick', ()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); });
@@ -331,7 +293,7 @@
     }catch{ alert('Impossible de recharger la config'); }
   };
 
-  /* ===== Privacy: bouton toggle ===== */
+  /* ===== Privacy toggle ===== */
   function setPrivacyVisibility(show){
     ppSection.style.display = show ? 'block' : 'none';
     ppSection.setAttribute('aria-hidden', String(!show));
@@ -348,14 +310,30 @@
   ppBtn.addEventListener('click', togglePrivacy);
   if (location.hash === '#privacy') setPrivacyVisibility(true);
 
+  /* ===== Init par défaut : ancre 16:28 + calibrage 2 LED vertes ===== */
+  function initDefaultAnchorWithTwoGreen(){
+    // 1) Base anchor = aujourd’hui 16:28 (heure locale)
+    const nowLocal=new Date();
+    const base=new Date(nowLocal); base.setHours(16,28,0,0);
+    if(base.getTime()>nowLocal.getTime()) base.setDate(base.getDate()-1); // si futur => hier
+    cfg.anchor_iso = toISO(base.getTime());
+
+    // 2) Viser 2 LED vertes (phase fermée) = remain dans (48,72] min -> on prend 60 min
+    const targetRemain = 60*60; // 60 min
+    const elapsedWanted = OPEN_SEC + (CLOSED_SEC - targetRemain); // temps écoulé depuis l'ouverture
+    const neededAnchorMs = Date.now() - elapsedWanted*1000;
+    cfg.manual_offset_seconds = Math.round((neededAnchorMs - base.getTime())/1000);
+
+    elMode.textContent = 'Ancre par défaut : 16:28 (local) • Affichage initial calé à 2 LED vertes';
+  }
+
   /* ===== Tick ===== */
   setInterval(()=>{ if(!cfg.paused) render(); },1000);
 
-  /* ===== Démarrage ===== */
-  // Par défaut aucun anchor_iso => l’admin doit définir “Dernière ouverture (HH:MM)”.
-  // Si tu veux un anchor par défaut (ex. 16:28), dé-commente :
-  // (function setDefault(){ const now=new Date(); const d=new Date(now); d.setHours(16,28,0,0); if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1); cfg.anchor_iso = toISO(d.getTime()); elMode.textContent='Ancre par défaut : '+pretty(d.getTime()); render(); })();
-
+  /* Go */
+  initDefaultAnchorWithTwoGreen();
+  inputTime.value = "16:28";
+  render();
 </script>
 </body>
 </html>
