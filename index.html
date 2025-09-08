@@ -4,41 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Contested Zone Timers — Executive Hangar</title>
-  <style>
-    *{box-sizing:border-box} html,body{margin:0;padding:0}
-    :root{
-      --bg:#0f0f12; --panel:#16161a; --text:#eaeaea; --muted:#9aa0a6;
-      --ring:#27272a; --green:#22c55e; --orange:#f59e0b; --red:#ef4444;
-    }
-    body{background:var(--bg);color:var(--text);font:16px/1.5 system-ui,Segoe UI,Roboto,Arial,sans-serif}
-    .container{max-width:1100px;margin:0 auto;padding:20px}
-    .header{position:sticky;top:0;backdrop-filter:blur(8px);background:rgba(15,15,18,.6);border-bottom:1px solid var(--ring);z-index:10}
-    .nav{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:12px 20px}
-    .nav a{color:var(--text);text-decoration:none;font-weight:600}
-    .nav .links a{opacity:.8} .nav .links a:hover{opacity:1;text-decoration:underline}
-    .brand{display:flex;align-items:center;gap:10px}
-    .logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#111,#222);display:grid;place-items:center;border:1px solid var(--ring)}
-    .logo::after{content:'⏱';font-size:14px;opacity:.9}
-    .grid{display:grid;gap:20px}
-    @media(min-width:900px){.grid{grid-template-columns:repeat(3,1fr)}}
-    .card{background:var(--panel);border:1px solid var(--ring);border-radius:16px;padding:16px;box-shadow:0 1px 0 rgba(255,255,255,.02) inset}
-    .h1{font-size:28px;font-weight:800;margin:0 0 8px}
-    .h2{font-size:18px;font-weight:700;margin:0 0 8px}
-    .p{color:var(--muted);margin:0 0 10px}
-    .timer-wrap{display:flex;align-items:center;gap:16px}
-    .time{font:32px/1 tabular-nums,ui-monospace,Menlo,Consolas,monospace;padding:6px 12px;border-radius:12px;background:#0b0b0e;border:1px solid var(--ring)}
-    .badge{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.3px}
-    .badge.open{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.35)}
-    .badge.closed{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.35)}
-    .controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-    .btn{padding:8px 12px;border-radius:10px;border:1px solid var(--ring);background:#0d0d10;color:var(--text);cursor:pointer}
-    .btn:hover{border-color:#3f3f46}
-    .led{width:14px;height:14px;border-radius:50%;border:1px solid #000;box-shadow:0 0 20px rgba(0,0,0,.4) inset,0 0 8px rgba(0,0,0,.2)}
-    .green{background:var(--green);box-shadow:0 0 20px rgba(34,197,94,.5)}
-    .orange{background:var(--orange);box-shadow:0 0 20px rgba(245,158,11,.5)}
-    .red{background:var(--red);box-shadow:0 0 20px rgba(239,68,68,.5)}
-    .footer{color:var(--muted);text-align:center;padding:24px}
-  </style>
+  <link rel="stylesheet" href="assets/style.css" />
 </head>
 <body>
   <header class="header">
@@ -59,7 +25,7 @@
     <div class="grid">
       <section class="card" style="grid-column: span 2;">
         <h2 class="h1">Executive Hangar — Cycle 3h fermé / 1h ouvert</h2>
-        <p class="p">Timer cyclique. Utilise les boutons pour le recaler sur l'état en jeu.</p>
+        <p class="p">Timer cyclique. Utilise les boutons pour le recaler sur l'état en jeu si besoin.</p>
 
         <div class="timer-wrap">
           <div id="led" class="led green" aria-label="state led"></div>
@@ -84,95 +50,6 @@
     Fan-made / Non affilié à CIG. Crédits sur chaque page.
   </footer>
 
-<script>
-  // === TIMER CYCLIQUE AUTO ===
-  // Réglages du cycle
-  const CLOSED_MIN = 180; // 3h fermé
-  const OPEN_MIN   = 60;  // 1h ouvert
-
-  // ⚓ ANCRE: début connu d'un cycle (UTC). Change-la si besoin.
-  // Exemple: 1 sept. 2025, 00:00:00 UTC
-  const ANCHOR_ISO_UTC = '2025-09-01T00:00:00Z';
-
-  // (Optionnel) Décaler l'ancre si tu constates 1 min d'écart IRL (en secondes)
-  const MANUAL_OFFSET_SECONDS = 0; // ex: 60 pour +1min, -60 pour -1min
-
-  // Persistance locale: si tu recalibres manuellement, on garde la base
-  const LS_KEY = 'czt_base_ms_v1';
-
-  const cycleSeconds  = (CLOSED_MIN + OPEN_MIN) * 60;
-  const closedSeconds = CLOSED_MIN * 60;
-
-  const elTime  = document.querySelector('#time');
-  const elPhase = document.querySelector('#phase');
-  const elLed   = document.querySelector('#led');
-
-  // Utilitaires
-  const pad = n => String(n).padStart(2,'0');
-  const fmt = sec => {
-    sec = Math.max(0, Math.floor(sec));
-    const h = pad(Math.floor(sec/3600));
-    const m = pad(Math.floor((sec%3600)/60));
-    const s = pad(sec%60);
-    return `${h}:${m}:${s}`;
-  };
-  const ledClassFromRatio = r => r > 0.66 ? 'green' : r > 0.33 ? 'orange' : 'red';
-
-  // Détermine la "base" du cycle :
-  // 1) si l'utilisateur a recalibré → on garde cette base (localStorage)
-  // 2) sinon → on utilise l'ANCRE UTC (début d'un cycle global, identique pour tout le monde)
-  function getBaseMs() {
-    const saved = localStorage.getItem(LS_KEY);
-    if (saved && /^\d+$/.test(saved)) return Number(saved);
-    const anchorMs = Date.parse(ANCHOR_ISO_UTC) + MANUAL_OFFSET_SECONDS*1000;
-    return anchorMs;
-  }
-
-  let base = getBaseMs();
-
-  function setBaseMs(ms) {
-    base = ms;
-    localStorage.setItem(LS_KEY, String(ms));
-  }
-
-  function clearBase() {
-    localStorage.removeItem(LS_KEY);
-    base = getBaseMs();
-  }
-
-  function update(){
-    const now = Date.now();
-    const elapsed = (((now - base)/1000) % cycleSeconds + cycleSeconds) % cycleSeconds;
-    const isOpen  = elapsed >= closedSeconds;
-    const remain  = isOpen ? (cycleSeconds - elapsed) : (closedSeconds - elapsed);
-    const ratio   = isOpen ? remain / (OPEN_MIN*60) : remain / (CLOSED_MIN*60);
-
-    elTime.textContent   = fmt(remain);
-    elPhase.textContent  = isOpen ? 'OUVERT' : 'FERMÉ';
-    elPhase.className    = 'badge ' + (isOpen ? 'open' : 'closed');
-    elLed.classList.remove('green','orange','red');
-    elLed.classList.add(ledClassFromRatio(ratio));
-  }
-
-  // --- Recalibrages manuels (gardés en localStorage)
-  function recalOpen(){  // On force "début de phase ouverte = maintenant"
-    setBaseMs(Date.now() - closedSeconds*1000);
-    update();
-  }
-  function recalClosed(){ // On force "début de phase fermée = maintenant"
-    setBaseMs(Date.now());
-    update();
-  }
-  // Expose aux boutons existants
-  window.recalOpen = recalOpen;
-  window.recalClosed = recalClosed;
-
-  // (Optionnel) Bouton pour revenir à l'ancre globale (si tu en ajoutes un)
-  // window.resetToAnchor = () => { clearBase(); update(); };
-
-  setInterval(update, 1000);
-  update();
-</script>
-
+  <script src="assets/app.js"></script>
 </body>
 </html>
