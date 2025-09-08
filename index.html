@@ -96,8 +96,8 @@
 
     <!-- Message Discord -->
     <div class="panel discord-msg">
-      🚀 Envie de rejoindre la <strong>MAMMON</strong> ?  
-      <a href="https://discord.gg/aUBDScHG" target="_blank">Rejoins notre Discord ici !</a>
+      🚀 Envie de rejoindre la <strong>MAMMON</strong> ? 
+      <a href="https://discord.gg/aUBDScHG" target="_blank" rel="noopener">Rejoins notre Discord ici !</a>
     </div>
 
     <!-- Panel Timer -->
@@ -115,7 +115,7 @@
       <div class="next" id="nextTimes">Prochaine fermeture : — • Prochaine ouverture : —</div>
       <div class="meta" id="modeMeta">Config globale chargée.</div>
 
-      <!-- Admin (caché par défaut) -->
+      <!-- Admin (caché par défaut, s’affiche après login) -->
       <div class="admin" id="adminPanel" style="display:none">
         <div class="admin-row" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center">
           <label for="openTime">Dernière ouverture (HH:MM) :</label>
@@ -136,24 +136,46 @@
       <a href="#privacy" id="ppBtn" class="pp-cta">Privacy Policy</a>
     </div>
 
-    <!-- ====== PRIVACY POLICY ====== -->
+    <!-- ====== PRIVACY POLICY (Updated) ====== -->
     <section class="privacy" id="privacy">
       <div class="box">
         <h2>Privacy Policy</h2>
         <p><em>Effective Date: September 8, 2025</em></p>
-        <p>Welcome! Your privacy matters to us...</p>
+
+        <p>Welcome! Your privacy matters to us. This Policy explains what we do (and don’t) collect, how we may use cookies/ads in the future, and your rights.</p>
+
+        <h3>Information We Collect</h3>
+        <p>We do <strong>not</strong> collect, sell, or share personal data. Timer preferences are saved in your browser’s <strong>Local Storage</strong> for convenience. This data stays on your device and is never transmitted to our servers.</p>
+
+        <h3>Cookies &amp; Tracking</h3>
+        <p>We currently do not use cookies. In the future, we may enable cookies or similar technologies to show ads (e.g., Google AdSense, Ezoic). These may process non-identifiable data (e.g., page views) to serve relevant ads. You can control or delete cookies in your browser settings at any time.</p>
+
+        <h3>Third-Party Services (Ads)</h3>
+        <p>If/when ads are enabled, third-party ad networks (e.g., Google AdSense, Ezoic) may use cookies and similar tech to deliver and measure ads. Please review their respective privacy policies for details on their processing.</p>
+
+        <h3>Your Rights</h3>
+        <p>Depending on your location, you may have rights under laws such as <strong>GDPR</strong> (EU/EEA/UK) or <strong>CCPA/CPRA</strong> (California), including access, correction, deletion, objection/restriction, and withdrawing consent (where applicable). Because we do not collect personal data, these rights mainly relate to cookie preferences you control in your browser if/when ads are enabled.</p>
+
+        <h3>Data Retention</h3>
+        <p>We do not maintain user profiles or store personal data. Local Storage data remains on your device until you clear it (e.g., “Clear Site Data” in your browser).</p>
+
+        <h3>Children’s Privacy</h3>
+        <p>This site is for a general audience and does not knowingly collect information from children under 13 (or higher local age threshold).</p>
+
+        <h3>Changes to This Policy</h3>
+        <p>We may update this Policy from time to time. We will post changes here with a new Effective Date. Please check this page periodically.</p>
       </div>
     </section>
 
   </div>
 </div>
 
-<!-- Modal Admin -->
+<!-- Modal Admin (login) -->
 <div class="modal" id="modal" style="display:none">
   <div class="box" style="background:#0f1220; border:1px solid var(--panel-border); border-radius:12px; padding:16px; width:100%; max-width:360px">
     <h3 style="margin:0 0 10px; font-size:18px">Connexion admin</h3>
     <div class="field" style="display:flex; gap:8px">
-      <input type="password" id="pwd" placeholder="Mot de passe admin" style="flex:1;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff" />
+      <input type="password" id="pwd" placeholder="Mot de passe admin (Vercel → ADMIN_PASSWORD)" style="flex:1;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff" />
       <button class="btn" id="doLogin">OK</button>
     </div>
     <div class="actions" style="display:flex; gap:8px; margin-top:10px; justify-content:flex-end">
@@ -167,6 +189,7 @@
   const OPEN_MIN=60, CLOSED_MIN=120, DOTS=5;
   const OPEN_SEC=OPEN_MIN*60, CLOSED_SEC=CLOSED_MIN*60, CYCLE_SEC=OPEN_SEC+CLOSED_SEC;
 
+  /* ===== Éléments ===== */
   const elClock=document.getElementById('clock');
   const elStatus=document.getElementById('status');
   const elSub=document.getElementById('subtitle');
@@ -174,14 +197,33 @@
   const elNext=document.getElementById('nextTimes');
   const elMode=document.getElementById('modeMeta');
 
+  const adminPanel=document.getElementById('adminPanel');
+  const inputTime=document.getElementById('openTime');
+  const btnPublish=document.getElementById('publishGlobal');
+  const btnPause=document.getElementById('togglePauseGlobal');
+  const btnReload=document.getElementById('reload');
+  const btnLogout=document.getElementById('logout');
+
+  const modal=document.getElementById('modal');
+  const pwdInput=document.getElementById('pwd');
+  const doLoginBtn=document.getElementById('doLogin');
+  const closeModal=document.getElementById('closeModal');
+
+  /* Privacy */
+  const ppBtn=document.getElementById('ppBtn');
+  const ppSection=document.getElementById('privacy');
+
+  /* ===== State global (API) ===== */
   let cfg={anchor_iso:'2025-09-07T16:53:00Z', manual_offset_seconds:0, paused:false};
 
+  /* ===== Utils ===== */
   const pad=n=>String(n).padStart(2,'0');
   const fmt=s=>{s=Math.max(0,Math.floor(s)); return `${pad(s/3600|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`;};
   const pretty=ms=>new Date(ms).toLocaleString('fr-FR',{dateStyle:'short', timeStyle:'short'});
   const anchorMs=()=>Date.parse(cfg.anchor_iso)+(cfg.manual_offset_seconds||0)*1000;
   const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
 
+  /* ===== Timer render ===== */
   function render(){
     const now=Date.now();
     const elapsed=(((now-anchorMs())/1000)%CYCLE_SEC+CYCLE_SEC)%CYCLE_SEC;
@@ -204,10 +246,63 @@
     elNext.textContent = `Prochaine fermeture : ${pretty(nClose)} • Prochaine ouverture : ${pretty(nOpen)}`;
   }
 
-  function loadCfg(){
-    render();
+  async function loadCfg(){
+    try{
+      const r=await fetch('/api/anchor?ts='+Date.now(),{cache:'no-store'});
+      if(!r.ok){ elMode.textContent='Erreur API: '+r.status; return; }
+      cfg=await r.json();
+      elMode.textContent='Config globale chargée. Dernière MAJ globale : '+pretty(Date.parse(cfg.anchor_iso));
+      const d=new Date(); inputTime.value=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      render();
+    }catch(err){
+      elMode.textContent='Erreur de chargement config';
+      console.error(err);
+    }
   }
 
+  /* ===== Admin session ===== */
+  let isAdmin=false, adminPwd=null;
+  function setAdminUI(v){ isAdmin=v; adminPanel.style.display=v?'flex':'none'; if(!v) adminPwd=null; }
+
+  // SECRET TRIGGERS — ouvrir la fenêtre de login sans bouton visible
+  const secretLogo = document.getElementById('secretLogo');
+  secretLogo.addEventListener('dblclick', ()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); });   // double-clic sur le logo
+  document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='a'){ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } }); // Ctrl+Shift+A
+  if (location.hash === '#admin'){ setTimeout(()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }, 50); } // URL …/#admin
+
+  doLoginBtn.onclick= ()=>{ adminPwd=pwdInput.value.trim(); if(!adminPwd){ alert('Entre le mot de passe'); return; } setAdminUI(true); modal.style.display='none'; };
+  closeModal.onclick=()=>{ modal.style.display='none'; };
+  btnLogout.onclick=()=> setAdminUI(false);
+
+  document.getElementById('publishGlobal').onclick= async ()=>{
+    if(!isAdmin || !adminPwd){ modal.style.display='flex'; return; }
+    const val=inputTime.value.trim(); if(!val) return alert('Indique HH:MM');
+    const [hh,mm]=val.split(':').map(Number); if(Number.isNaN(hh)||Number.isNaN(mm)) return alert('Heure invalide');
+    const now=new Date(); const d=new Date(now); d.setHours(hh,mm,0,0); if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1);
+    const iso=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().replace('.000Z','Z');
+    const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:adminPwd,anchor_iso:iso,manual_offset_seconds:0,paused:false})});
+    if(!r.ok){ if(r.status===401){ setAdminUI(false); alert('Mot de passe incorrect'); return; } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
+    cfg=await r.json(); alert('✅ Mise à jour globale enregistrée'); loadCfg();
+  };
+
+  document.getElementById('togglePauseGlobal').onclick= async ()=>{
+    if(!isAdmin || !adminPwd){ modal.style.display='flex'; return; }
+    const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:adminPwd,anchor_iso:cfg.anchor_iso,manual_offset_seconds:cfg.manual_offset_seconds||0,paused:!cfg.paused})});
+    if(!r.ok){ if(r.status===401){ setAdminUI(false); alert('Mot de passe incorrect'); return; } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
+    cfg=await r.json(); render();
+  };
+
+  document.getElementById('reload').onclick= loadCfg;
+
+  /* ===== Privacy: bouton qui affiche & scroll ===== */
+  function openPrivacy(){
+    ppSection.style.display='block';
+    ppSection.scrollIntoView({behavior:'smooth'});
+  }
+  ppBtn.addEventListener('click', (e)=>{ e.preventDefault(); openPrivacy(); });
+  if (location.hash === '#privacy') { ppSection.style.display='block'; }
+
+  /* Go */
   setInterval(render,1000);
   loadCfg();
 </script>
