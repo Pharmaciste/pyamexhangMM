@@ -11,7 +11,6 @@
     --panel:#0b0f1aee;
     --panel-border:rgba(255,255,255,.08);
     --text:#ffffff;
-    --muted:#cbd5e1;
     --ok:#22c55e;
     --danger:#ef4444;
     --accent:#fbbf24; --accent-2:#fde047;
@@ -35,8 +34,6 @@
   .brand-title{font-weight:900; letter-spacing:.3px}
   .badge{font-size:11px; font-weight:900; padding:4px 8px; border-radius:999px; background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111;}
   .header-right{display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end}
-  .btn{padding:8px 12px; border-radius:12px; border:1px solid var(--panel-border); background:#0f172a; color:#fff; cursor:pointer}
-  .btn.primary{background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111; border-color:transparent; font-weight:900}
 
   .panel{background:var(--panel); border:1px solid var(--panel-border); border-radius:16px; padding:18px; box-shadow:0 12px 30px var(--shadow); backdrop-filter: blur(6px)}
   h1{margin:6px 0 10px; font-size:30px; font-weight:900}
@@ -52,21 +49,25 @@
   .meta{margin-top:10px; font-size:12px; opacity:.9}
   .next{margin-top:12px; font-size:13px; opacity:.96}
 
-  /* Privacy CTA */
+  /* CTA Privacy */
   .pp-cta-wrap{margin:22px 0 8px; display:flex; justify-content:center}
   .pp-cta{padding:9px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:#0f172a; color:#fff; text-decoration:none}
   .pp-cta:hover{border-color:#334155}
   .privacy{display:none; margin-top:16px}
   .privacy .box{background:var(--panel); border:1px solid var(--panel-border); border-radius:16px; padding:16px; box-shadow:0 12px 30px var(--shadow)}
+  .privacy h2{margin:0 0 10px; font-size:20px; font-weight:900}
+  .privacy h3{margin:16px 0 6px; font-size:16px; font-weight:800}
+  .privacy p, .privacy li{color:#dbeafe}
 
   /* Discord msg */
   .discord-msg{margin-bottom:16px; text-align:center; font-size:14px;}
   .discord-msg a{color:var(--accent); font-weight:bold; text-decoration:none;}
   .discord-msg a:hover{text-decoration:underline;}
 
-  /* Admin simplifié */
+  /* Admin (caché par défaut, accessible via triggers) */
   .admin{display:none; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; margin-top:16px}
-  .admin input[type="time"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
+  .admin input[type="time"], .admin input[type="number"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff; width:140px}
+  .admin .hint{font-size:12px; opacity:.8}
 </style>
 </head>
 <body>
@@ -80,7 +81,10 @@
         <span class="badge">LIVE</span>
       </div>
       <div class="header-right">
-        <button class="btn" id="adminToggleBtn" aria-controls="adminPanel" aria-expanded="false">Admin</button>
+        <!-- rien de visible (admin caché) -->
+        <span class="mini-badge" id="patchBadge" title="Star Citizen patch">
+          Updated for Star Citizen Patch 4.3.0-LIVE (Hotfix 10188864)
+        </span>
       </div>
     </header>
 
@@ -106,11 +110,18 @@
       <div class="next" id="nextTimes">Prochaine fermeture : — • Prochaine ouverture : —</div>
       <div class="meta" id="modeMeta">Aucune ancre définie.</div>
 
-      <!-- Admin simplifié -->
+      <!-- Admin caché (triggers: dblclick logo / Ctrl+Shift+A / #admin) -->
       <div class="admin" id="adminPanel">
         <label for="openTime"><strong>Dernière ouverture (HH:MM)</strong> :</label>
-        <input type="time" id="openTime" step="60" />
-        <button class="btn primary" id="applyAnchor">Appliquer</button>
+        <input type="time" id="openTime" step="1" />
+        <button class="btn" id="applyAnchor">Appliquer</button>
+
+        <span class="hint">ou</span>
+
+        <label for="minsNext"><strong>Min restantes jusqu’au prochain changement</strong> :</label>
+        <input type="number" id="minsNext" step="0.01" min="0" placeholder="ex: 82.17" />
+        <button class="btn" id="applyNext">Synchroniser</button>
+
         <button class="btn" id="pauseResume">Pause</button>
       </div>
     </section>
@@ -123,7 +134,29 @@
       <div class="box">
         <h2>Privacy Policy</h2>
         <p><em>Effective Date: September 8, 2025</em></p>
-        <p>We don’t collect personal data. Preferences may be stored locally in your browser.</p>
+
+        <p>Welcome! Your privacy matters to us. This Policy explains what we do (and don’t) collect, how we may use cookies/ads in the future, and your rights.</p>
+
+        <h3>Information We Collect</h3>
+        <p>We do <strong>not</strong> collect, sell, or share personal data. Timer preferences are saved in your browser’s <strong>Local Storage</strong> for convenience. This data stays on your device and is never transmitted to our servers.</p>
+
+        <h3>Cookies &amp; Tracking</h3>
+        <p>We currently do not use cookies. In the future, we may enable cookies or similar technologies to show ads (e.g., Google AdSense, Ezoic). These may process non-identifiable data (e.g., page views) to serve relevant ads. You can control or delete cookies in your browser settings at any time.</p>
+
+        <h3>Third-Party Services (Ads)</h3>
+        <p>If/when ads are enabled, third-party ad networks (e.g., Google AdSense, Ezoic) may use cookies and similar tech to deliver and measure ads. Please review their respective privacy policies for details on their processing.</p>
+
+        <h3>Your Rights</h3>
+        <p>Depending on your location, you may have rights under laws such as <strong>GDPR</strong> (EU/EEA/UK) or <strong>CCPA/CPRA</strong> (California), including access, correction, deletion, objection/restriction, and withdrawing consent (where applicable). Because we do not collect personal data, these rights mainly relate to cookie preferences you control in your browser if/when ads are enabled.</p>
+
+        <h3>Data Retention</h3>
+        <p>We do not maintain user profiles or store personal data. Local Storage data remains on your device until you clear it (e.g., “Clear Site Data” in your browser).</p>
+
+        <h3>Children’s Privacy</h3>
+        <p>This site is for a general audience and does not knowingly collect information from children under 13 (or higher local age threshold).</p>
+
+        <h3>Changes to This Policy</h3>
+        <p>We may update this Policy from time to time. We will post changes here with a new Effective Date. Please check this page periodically.</p>
       </div>
     </section>
 
@@ -131,9 +164,11 @@
 </div>
 
 <script>
-  /* ===== Paramètres ===== */
-  const OPEN_MIN=60, CLOSED_MIN=120, DOTS=5;
-  const OPEN_SEC=OPEN_MIN*60, CLOSED_SEC=CLOSED_MIN*60, CYCLE_SEC=OPEN_SEC+CLOSED_SEC;
+  /* ===== Paramètres (dérivés de tes données) ===== */
+  const OPEN_SEC   = 3901; // ~65:01
+  const CLOSED_SEC = 7201; // ~120:01
+  const DOTS=5;
+  const CYCLE_SEC = OPEN_SEC + CLOSED_SEC;
 
   /* ===== Eléments ===== */
   const elClock=document.getElementById('clock');
@@ -145,9 +180,10 @@
   const elLedInfo=document.getElementById('ledInfo');
 
   const adminPanel=document.getElementById('adminPanel');
-  const adminToggleBtn=document.getElementById('adminToggleBtn');
   const inputTime=document.getElementById('openTime');
   const applyBtn=document.getElementById('applyAnchor');
+  const minsNextInput=document.getElementById('minsNext');
+  const applyNextBtn=document.getElementById('applyNext');
   const pauseBtn=document.getElementById('pauseResume');
 
   const ppBtn=document.getElementById('ppBtn');
@@ -165,11 +201,19 @@
   const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
 
   function computeAnchorIsoFromHHMM(hhmm){
-    const [hh,mm]=hhmm.split(':').map(Number);
+    const [hh,mm,ssRaw]=hhmm.split(':');
+    const hhN=Number(hh), mmN=Number(mm), ssN=ssRaw?Number(ssRaw):0;
     const now=new Date();
-    const d=new Date(now); d.setHours(hh,mm,0,0);
+    const d=new Date(now); d.setHours(hhN,mmN,ssN,0);
     if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1); // si futur -> hier
     return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().replace('.000Z','Z');
+  }
+
+  function setAnchorISO(iso){
+    cfg.anchor_iso=iso;
+    localStorage.setItem(LS_KEY, iso);
+    elMode.textContent='Ancre : '+pretty(Date.parse(iso))+' • Cycle: ouvert 65:01 / fermé 120:01';
+    render();
   }
 
   /* ===== Rendu ===== */
@@ -208,73 +252,53 @@
     elNext.textContent = `Prochaine fermeture : ${pretty(nClose)} • Prochaine ouverture : ${pretty(nOpen)}`;
   }
 
-  /* ===== Chargement / Sauvegarde ===== */
-  async function loadCfg(){
-    // Tente l’API
-    try{
-      const r=await fetch('/api/anchor?ts='+Date.now(),{cache:'no-store'});
-      if(!r.ok) throw new Error('API '+r.status);
-      const serverCfg=await r.json();
-      cfg.anchor_iso=serverCfg.anchor_iso||null;
-      cfg.paused=!!serverCfg.paused;
-      localStorage.setItem(LS_KEY, cfg.anchor_iso||'');
-      elMode.textContent = cfg.anchor_iso ? 'Config globale (API). Dernière MAJ : '+pretty(Date.parse(cfg.anchor_iso)) : 'Aucune ancre définie.';
-    }catch{
-      const ls=localStorage.getItem(LS_KEY);
-      if(ls){ cfg.anchor_iso=ls; elMode.textContent='Config locale (fallback). Dernière MAJ : '+pretty(Date.parse(cfg.anchor_iso)); }
-      else{ elMode.textContent='Aucune ancre définie.'; }
-    }
-    // Préremplir l’input sur l’heure courante
-    const d=new Date(); inputTime.value=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  /* ===== Chargement ===== */
+  function loadCfg(){
+    const ls=localStorage.getItem(LS_KEY);
+    if(ls){ cfg.anchor_iso=ls; elMode.textContent='Ancre (local) : '+pretty(Date.parse(ls)); }
+    // Préremplir l’input
+    const d=new Date(); inputTime.value=`${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     render();
   }
 
-  async function applyAnchorFromInput(){
+  /* ===== Admin (caché) ===== */
+  function openAdmin(){ adminPanel.style.display='flex'; }
+  function closeAdmin(){ adminPanel.style.display='none'; }
+
+  // Triggers secrets
+  const secretLogo = document.getElementById('secretLogo');
+  secretLogo.addEventListener('dblclick', openAdmin);
+  document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='a'){ openAdmin(); }});
+  if (location.hash === '#admin'){ setTimeout(openAdmin, 50); }
+
+  // Appliquer à partir de la dernière ouverture (HH:MM[:SS])
+  applyBtn.addEventListener('click', ()=>{
     const val=inputTime.value.trim();
-    if(!val) return alert('Indique HH:MM');
+    if(!val) return alert('Indique HH:MM ou HH:MM:SS');
     const iso=computeAnchorIsoFromHHMM(val);
+    setAnchorISO(iso);
+  });
 
-    // (Ré)lancer le cycle
-    cfg.anchor_iso=iso;
-    cfg.paused=false;
+  // Synchroniser via "Time until next change: mm.ss"
+  applyNextBtn.addEventListener('click', ()=>{
+    const v=Number(minsNextInput.value);
+    if(!isFinite(v) || v<0) return alert('Indique les minutes restantes (ex: 82.17)');
+    const msToNext = Math.round(v*60*1000);
+    // On va estimer la phase actuelle: si on est en phase fermée, le "next change" = ouverture,
+    // si phase ouverte, le "next change" = fermeture. Comme on ne sait pas, on pose l'ancre
+    // sur "prochaine ouverture" = maintenant + msToNext, puis on recalcule normalement.
+    const targetOpen = Date.now() + msToNext;
+    const iso = new Date(targetOpen - (new Date().getTimezoneOffset()*60000)).toISOString().replace('.000Z','Z');
+    setAnchorISO(iso);
+  });
 
-    // Sauvegarde locale immédiate
-    localStorage.setItem(LS_KEY, iso);
-    elMode.textContent='Config locale appliquée. Dernière MAJ : '+pretty(Date.parse(iso));
-    render();
-
-    // Tentative API (facultative)
-    try{
-      const r=await fetch('/api/anchor',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({anchor_iso:iso, manual_offset_seconds:0, paused:false})
-      });
-      if(r.ok){
-        const serverCfg=await r.json();
-        cfg.anchor_iso=serverCfg.anchor_iso||iso;
-        localStorage.setItem(LS_KEY, cfg.anchor_iso);
-        elMode.textContent='Config globale (API). Dernière MAJ : '+pretty(Date.parse(cfg.anchor_iso));
-        render();
-      }
-    }catch{/* ignore si API indisponible */}
-  }
-
-  /* ===== Admin UI ===== */
-  function toggleAdmin(){
-    const show = adminPanel.style.display !== 'flex';
-    adminPanel.style.display = show ? 'flex' : 'none';
-    adminToggleBtn.setAttribute('aria-expanded', String(show));
-  }
-  adminToggleBtn.addEventListener('click', toggleAdmin);
-  applyBtn.addEventListener('click', applyAnchorFromInput);
+  // Pause/Resume
   pauseBtn.addEventListener('click', ()=>{
     cfg.paused=!cfg.paused;
     pauseBtn.textContent = cfg.paused ? 'Reprendre' : 'Pause';
-    render();
   });
 
-  /* ===== Privacy toggle ===== */
+  /* ===== Privacy: bouton toggle ===== */
   function setPrivacyVisibility(show){
     ppSection.style.display = show ? 'block' : 'none';
     ppSection.setAttribute('aria-hidden', String(!show));
