@@ -32,15 +32,13 @@
 
   header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 16px}
   .brand{display:flex; align-items:center; gap:10px}
-  .brand-logo{width:28px; height:28px; background:url('/assets/mammon.png') center/contain no-repeat; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5))}
+  .brand-logo{width:28px; height:28px; background:url('/assets/mammon.png') center/contain no-repeat; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); cursor:pointer}
   .brand-title{font-weight:900; letter-spacing:.3px}
   .badge{font-size:11px; font-weight:900; padding:4px 8px; border-radius:999px; background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111;}
   .header-right{display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end}
 
   /* mini badge patch */
   .mini-badge{font-size:12px; line-height:1; color:var(--ok); background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.45); padding:6px 10px; border-radius:999px; white-space:nowrap}
-  .chip{border:1px solid var(--panel-border); background:#0f172a; color:#fff; padding:6px 10px; border-radius:12px; cursor:pointer}
-  .chip:hover{border-color:#334155}
 
   .panel{background:var(--panel); border:1px solid var(--panel-border); border-radius:16px; padding:18px; box-shadow:0 12px 30px var(--shadow); backdrop-filter: blur(6px)}
   h1{margin:6px 0 10px; font-size:30px; font-weight:900; text-shadow:0 1px 2px rgba(0,0,0,.35)}
@@ -66,6 +64,10 @@
   .privacy h2{margin:0 0 10px; font-size:20px; font-weight:900}
   .privacy h3{margin:16px 0 6px; font-size:16px; font-weight:800}
   .privacy p, .privacy li{color:#dbeafe}
+
+  /* Admin buttons look */
+  .btn{padding:9px 12px; border-radius:12px; border:1px solid var(--panel-border); background:#0f172a; color:#fff; cursor:pointer}
+  .btn.primary{background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111; border-color:transparent; font-weight:900}
 </style>
 </head>
 <body>
@@ -76,7 +78,7 @@
     <!-- Header -->
     <header>
       <div class="brand">
-        <div class="brand-logo" aria-hidden="true"></div>
+        <div class="brand-logo" id="secretLogo" aria-hidden="true" title=" "></div>
         <div class="brand-title">CZ Timers</div>
         <span class="badge">LIVE</span>
       </div>
@@ -84,7 +86,7 @@
         <span class="mini-badge" id="patchBadge" title="Star Citizen patch">
           Updated for Star Citizen Patch 4.3.0-LIVE (Hotfix 10188864)
         </span>
-        <button class="chip" id="loginBtn">Admin</button>
+        <!-- (aucun bouton Admin visible) -->
       </div>
     </header>
 
@@ -103,14 +105,14 @@
       <div class="next" id="nextTimes">Prochaine fermeture : — • Prochaine ouverture : —</div>
       <div class="meta" id="modeMeta">Config globale chargée.</div>
 
-      <!-- Admin -->
+      <!-- Admin (caché par défaut, s’affiche après login) -->
       <div class="admin" id="adminPanel" style="display:none">
         <div class="admin-row" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center">
           <label for="openTime">Dernière ouverture (HH:MM) :</label>
           <input type="time" id="openTime" step="60" />
         </div>
         <div class="admin-row" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:8px">
-          <button class="btn" style="padding:9px 12px;border-radius:12px;border:1px solid var(--panel-border);background:linear-gradient(90deg, var(--accent), var(--accent-2));color:#111;font-weight:900" id="publishGlobal">Mettre à jour GLOBAL</button>
+          <button class="btn primary" id="publishGlobal">Mettre à jour GLOBAL</button>
           <button class="btn" id="togglePauseGlobal">Pause/Reprendre GLOBAL</button>
           <button class="btn" id="reload">Recharger</button>
           <button class="btn" id="logout">Se déconnecter</button>
@@ -158,7 +160,7 @@
   </div>
 </div>
 
-<!-- Modal Admin -->
+<!-- Modal Admin (login) -->
 <div class="modal" id="modal" style="display:none">
   <div class="box" style="background:#0f1220; border:1px solid var(--panel-border); border-radius:12px; padding:16px; width:100%; max-width:360px">
     <h3 style="margin:0 0 10px; font-size:18px">Connexion admin</h3>
@@ -185,7 +187,6 @@
   const elNext=document.getElementById('nextTimes');
   const elMode=document.getElementById('modeMeta');
 
-  const loginBtn=document.getElementById('loginBtn');
   const adminPanel=document.getElementById('adminPanel');
   const inputTime=document.getElementById('openTime');
   const btnPublish=document.getElementById('publishGlobal');
@@ -246,9 +247,14 @@
 
   /* ===== Admin session ===== */
   let isAdmin=false, adminPwd=null;
-  function setAdminUI(v){ isAdmin=v; adminPanel.style.display=v?'flex':'none'; loginBtn.textContent=v?'Admin ✓':'Admin'; if(!v) adminPwd=null; }
+  function setAdminUI(v){ isAdmin=v; adminPanel.style.display=v?'flex':'none'; if(!v) adminPwd=null; }
 
-  loginBtn.onclick = ()=>{ if(isAdmin){ setAdminUI(false); } else { modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } };
+  // SECRET TRIGGERS — ouvrir la fenêtre de login sans bouton visible
+  const secretLogo = document.getElementById('secretLogo');
+  secretLogo.addEventListener('dblclick', ()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); });   // double-clic sur le logo
+  document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='a'){ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } }); // Ctrl+Shift+A
+  if (location.hash === '#admin'){ setTimeout(()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }, 50); } // URL …/#admin
+
   doLoginBtn.onclick= ()=>{ adminPwd=pwdInput.value.trim(); if(!adminPwd){ alert('Entre le mot de passe'); return; } setAdminUI(true); modal.style.display='none'; };
   closeModal.onclick=()=>{ modal.style.display='none'; };
   btnLogout.onclick=()=> setAdminUI(false);
