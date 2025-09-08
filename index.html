@@ -48,6 +48,13 @@
   .note{opacity:.8; font-size:12px; margin-top:8px}
   .hint{opacity:.7; font-size:12px; text-align:center; margin-top:12px}
 
+  /* Champ heure dans l'admin */
+  .admin input[type="time"]{
+    padding:8px 10px; border-radius:10px;
+    border:1px solid rgba(255,255,255,.15);
+    background:#0b0e1a; color:#fff
+  }
+
   /* --- Modal login --- */
   .modal{position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; padding:20px}
   .modal .box{background:#0f1220; border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:16px; width:100%; max-width:360px}
@@ -80,11 +87,18 @@
 
       <!-- Zone admin (affichée seulement après connexion) -->
       <div class="admin" id="admin">
-        <button class="btn" id="openNow">Open starts now</button>
-        <button class="btn" id="closedNow">Closed starts now</button>
-        <button class="btn" id="resetAnchor">Reset to global anchor</button>
-        <button class="btn" id="logout">Logout</button>
-        <div class="note">Admin only. Anchor is saved locally for everyone’s view.</div>
+        <div class="row">
+          <input type="time" id="openTime" step="60" />
+          <button class="btn" id="setTimeBtn">Set opening at HH:MM</button>
+          <button class="btn" id="togglePause">Pause</button>
+        </div>
+        <div class="row">
+          <button class="btn" id="openNow">Open starts now</button>
+          <button class="btn" id="closedNow">Closed starts now</button>
+          <button class="btn" id="resetAnchor">Reset to global anchor</button>
+          <button class="btn" id="logout">Logout</button>
+        </div>
+        <div class="note">Choisis l’heure exacte de la <b>dernière ouverture</b>, puis “Set opening…”. Pause fige l’état affiché.</div>
       </div>
 
       <div class="hint">Cycle: 2h Closed → 1h Open (auto). LEDs step one-by-one.</div>
@@ -123,6 +137,7 @@
   const ADMIN_PASSWORD = 'admin123';  // ← CHANGE MOI !
   const LS_IS_ADMIN = 'eh_is_admin_v1';
   const LS_ANCHOR   = 'eh_anchor_ms_v1';
+  const LS_PAUSED   = 'eh_paused_v1';
 
   const CYCLE_SEC  = (OPEN_MIN + CLOSED_MIN) * 60;  // 3 h
   const OPEN_SEC   = OPEN_MIN * 60;
@@ -135,6 +150,9 @@
   const elDotsBox = document.getElementById('dots');
   const elDots    = elDotsBox.children;
   const elAdmin   = document.getElementById('admin');
+  const inputTime = document.getElementById('openTime');
+  const btnSetTime= document.getElementById('setTimeBtn');
+  const btnPause  = document.getElementById('togglePause');
 
   // Modal
   const modal      = document.getElementById('modal');
@@ -154,13 +172,53 @@
   function setAnchorMs(ms){ localStorage.setItem(LS_ANCHOR, String(ms)); }
   function resetAnchor(){ localStorage.removeItem(LS_ANCHOR); }
 
+  function isAdmin(){ return localStorage.getItem(LS_IS_ADMIN) === '1'; }
+  function setAdmin(v){
+    if(v){ localStorage.setItem(LS_IS_ADMIN,'1'); }
+    else { localStorage.removeItem(LS_IS_ADMIN); }
+    elAdmin.style.display = v ? 'flex' : 'none';
+    loginBtn.textContent = v ? 'Admin ✓' : 'Admin Login';
+  }
+
+  function isPaused(){ return localStorage.getItem(LS_PAUSED) === '1'; }
+  function setPaused(v){
+    if(v){ localStorage.setItem(LS_PAUSED,'1'); btnPause.textContent='Resume'; }
+    else { localStorage.removeItem(LS_PAUSED); btnPause.textContent='Pause'; }
+  }
+
+  // Pré-remplir l’heure HH:MM avec l’heure actuelle (arrondi à la minute)
+  (function initTimeField(){
+    const d = new Date();
+    inputTime.value = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  })();
+
   let anchorMs = getAnchorMs();
+  let frozenElapsed = null; // pour la pause (on fige l'état affiché)
+
+  function lastOccurrenceMs(hh, mm){
+    const now = new Date();
+    const cand = new Date(now);
+    cand.setHours(hh, mm, 0, 0);
+    if (cand.getTime() > now.getTime()) cand.setDate(cand.getDate() - 1);
+    return cand.getTime(); // début d'ouverture
+  }
 
   function update(){
     const now = Date.now();
-    const elapsed = (((now - anchorMs)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
 
-    // Phase: de 0 à 3600s -> OUVERT ; de 3600s à 10800s -> FERMÉ
+    // gère la pause : on fige l'elapsed
+    let elapsed;
+    if (isPaused()){
+      if (frozenElapsed === null){
+        frozenElapsed = (((now - anchorMs)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
+      }
+      elapsed = frozenElapsed;
+    } else {
+      frozenElapsed = null;
+      elapsed = (((now - anchorMs)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
+    }
+
+    // Phase: 0..OPEN_SEC -> OUVERT ; sinon -> FERMÉ
     const isOpen  = elapsed < OPEN_SEC;
     const remain  = isOpen ? (OPEN_SEC - elapsed) : (CYCLE_SEC - elapsed);
 
@@ -170,47 +228,37 @@
 
     elClock.textContent = fmt(remain);
     if (isOpen) {
-      elStatus.textContent = 'Hangar Open';
+      elStatus.textContent = 'Hangar Open' + (isPaused() ? ' (Paused)' : '');
       elStatus.className = 'status open';
       elSub.textContent = 'Closes in ' + fmt(remain);
     } else {
-      elStatus.textContent = 'Hangar Closed';
+      elStatus.textContent = 'Hangar Closed' + (isPaused() ? ' (Paused)' : '');
       elStatus.className = 'status closed';
       elSub.textContent = 'Opens in ' + fmt(remain);
     }
 
-    // ====== LED “défilement” synchronisées ======
-    // Ouvert  : commence tout VERT, puis une à une devient ROUGE
-    // Fermé   : commence tout ROUGE, puis une à une devient VERTE
+    // LEDs “défilement”
     let greenCount;
     if (isOpen) {
-      // ex: progress 1.0 -> 5 verts ; 0.8 -> 4 ; 0.6 -> 3 ; ... -> 0
       greenCount = Math.ceil(progress * DOTS_COUNT);
     } else {
-      // ex: progress 1.0 -> 0 verts ; 0.8 -> 1 ; 0.6 -> 2 ; ... -> 5
       greenCount = DOTS_COUNT - Math.ceil(progress * DOTS_COUNT);
     }
     greenCount = Math.max(0, Math.min(DOTS_COUNT, greenCount));
-
     for (let i = 0; i < DOTS_COUNT; i++) {
       elDots[i].className = 'dot ' + (i < greenCount ? 'g' : 'r');
     }
   }
 
-  // --- Admin UI ---
-  function isAdmin(){ return localStorage.getItem(LS_IS_ADMIN) === '1'; }
-  function setAdmin(v){
-    if(v){ localStorage.setItem(LS_IS_ADMIN,'1'); }
-    else { localStorage.removeItem(LS_IS_ADMIN); }
-    elAdmin.style.display = v ? 'flex' : 'none';
-    loginBtn.textContent = v ? 'Admin ✓' : 'Admin Login';
-  }
-
-  // init admin state
+  // --- Admin UI init ---
   setAdmin(isAdmin());
+  setPaused(isPaused());
 
   // login modal handlers
-  loginBtn.onclick = () => { if(isAdmin()) { setAdmin(false); } else { modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } };
+  loginBtn.onclick = () => {
+    if(isAdmin()) { setAdmin(false); }
+    else { modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }
+  };
   doLoginBtn.onclick = () => {
     if(pwdInput.value === ADMIN_PASSWORD){
       setAdmin(true);
@@ -221,11 +269,30 @@
   };
   closeModal.onclick = () => { modal.style.display='none'; };
 
-  // admin buttons
-  document.getElementById('openNow').onclick   = () => { if(!isAdmin()) return; anchorMs = Date.now(); /* début d'ouverture = maintenant */ setAnchorMs(anchorMs); update(); };
-  document.getElementById('closedNow').onclick = () => { if(!isAdmin()) return; anchorMs = Date.now() - OPEN_SEC*1000; /* début fermeture = maintenant => ouverture finie */ setAnchorMs(anchorMs); update(); };
+  // admin buttons existants
+  document.getElementById('openNow').onclick   = () => { if(!isAdmin()) return; anchorMs = Date.now(); setAnchorMs(anchorMs); update(); };
+  document.getElementById('closedNow').onclick = () => { if(!isAdmin()) return; anchorMs = Date.now() - OPEN_SEC*1000; setAnchorMs(anchorMs); update(); };
   document.getElementById('resetAnchor').onclick = () => { if(!isAdmin()) return; resetAnchor(); anchorMs = getAnchorMs(); update(); };
   document.getElementById('logout').onclick = () => { setAdmin(false); };
+
+  // NOUVEAU : Set opening at HH:MM (dernière occurrence)
+  btnSetTime.onclick = () => {
+    if(!isAdmin()) return;
+    const val = inputTime.value;
+    if(!val){ alert('Indique une heure HH:MM'); return; }
+    const [hh, mm] = val.split(':').map(Number);
+    if(Number.isNaN(hh) || Number.isNaN(mm)){ alert('Heure invalide'); return; }
+    anchorMs = lastOccurrenceMs(hh, mm);
+    setAnchorMs(anchorMs);
+    update();
+  };
+
+  // NOUVEAU : Pause / Resume
+  btnPause.onclick = () => {
+    if(!isAdmin()) return;
+    setPaused(!isPaused());
+    update();
+  };
 
   setInterval(update, 1000);
   update();
