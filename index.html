@@ -25,6 +25,7 @@
       var(--bg) url('https://images.unsplash.com/photo-1517817748496-62bc3047b9ff?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat fixed;
     min-height:100vh;
   }
+  .wm{position:fixed; inset:0; pointer-events:none; z-index:0; background:url('/assets/mammon.png') center 35% / min(80vmin,900px) no-repeat; opacity:.09; filter: drop-shadow(0 0 18px rgba(0,0,0,.6))}
   .overlay{position:relative; z-index:1; background:linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.35)); min-height:100vh;}
   .wrap{max-width:980px; margin:0 auto; padding:18px 18px 60px;}
 
@@ -64,15 +65,20 @@
   .discord-msg a{color:var(--accent); font-weight:bold; text-decoration:none;}
   .discord-msg a:hover{text-decoration:underline;}
 
-  /* Admin (caché par défaut, accessible via triggers) */
+  /* Admin (caché par défaut, login par mot de passe) */
+  .btn{padding:9px 12px; border-radius:12px; border:1px solid var(--panel-border); background:#0f172a; color:#fff; cursor:pointer}
+  .btn.primary{background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111; border-color:transparent; font-weight:900}
   .admin{display:none; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; margin-top:16px}
-  .admin input[type="time"], .admin input[type="number"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff; width:140px}
-  .admin .hint{font-size:12px; opacity:.8}
+  .admin input[type="time"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
+  .modal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55); z-index:10}
+  .modal .box{background:#0f1220; border:1px solid var(--panel-border); border-radius:12px; padding:16px; width:100%; max-width:360px}
 </style>
 </head>
 <body>
+<div class="wm" aria-hidden="true"></div>
 <div class="overlay">
   <div class="wrap">
+
     <!-- Header -->
     <header>
       <div class="brand">
@@ -81,7 +87,6 @@
         <span class="badge">LIVE</span>
       </div>
       <div class="header-right">
-        <!-- rien de visible (admin caché) -->
         <span class="mini-badge" id="patchBadge" title="Star Citizen patch">
           Updated for Star Citizen Patch 4.3.0-LIVE (Hotfix 10188864)
         </span>
@@ -110,19 +115,14 @@
       <div class="next" id="nextTimes">Prochaine fermeture : — • Prochaine ouverture : —</div>
       <div class="meta" id="modeMeta">Aucune ancre définie.</div>
 
-      <!-- Admin caché (triggers: dblclick logo / Ctrl+Shift+A / #admin) -->
+      <!-- Admin (caché : apparaît après login) -->
       <div class="admin" id="adminPanel">
         <label for="openTime"><strong>Dernière ouverture (HH:MM)</strong> :</label>
-        <input type="time" id="openTime" step="1" />
-        <button class="btn" id="applyAnchor">Appliquer</button>
-
-        <span class="hint">ou</span>
-
-        <label for="minsNext"><strong>Min restantes jusqu’au prochain changement</strong> :</label>
-        <input type="number" id="minsNext" step="0.01" min="0" placeholder="ex: 82.17" />
-        <button class="btn" id="applyNext">Synchroniser</button>
-
-        <button class="btn" id="pauseResume">Pause</button>
+        <input type="time" id="openTime" step="60" />
+        <button class="btn primary" id="publishGlobal">Mettre à jour GLOBAL</button>
+        <button class="btn" id="togglePauseGlobal">Pause/Reprendre GLOBAL</button>
+        <button class="btn" id="reload">Recharger config</button>
+        <button class="btn" id="logout">Se déconnecter</button>
       </div>
     </section>
 
@@ -163,10 +163,24 @@
   </div>
 </div>
 
+<!-- Modal Admin (login) -->
+<div class="modal" id="modal">
+  <div class="box">
+    <h3 style="margin:0 0 10px; font-size:18px">Connexion admin</h3>
+    <div class="field" style="display:flex; gap:8px">
+      <input type="password" id="pwd" placeholder="Mot de passe admin (Vercel → ADMIN_PASSWORD)" style="flex:1;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff" />
+      <button class="btn" id="doLogin">OK</button>
+    </div>
+    <div class="actions" style="display:flex; gap:8px; margin-top:10px; justify-content:flex-end">
+      <button class="btn" id="closeModal">Fermer</button>
+    </div>
+  </div>
+</div>
+
 <script>
-  /* ===== Paramètres (dérivés de tes données) ===== */
-  const OPEN_SEC   = 3901; // ~65:01
-  const CLOSED_SEC = 7201; // ~120:01
+  /* ===== Durées calibrées sur tes cycles ===== */
+  const OPEN_SEC   = 3900;  // 65:00
+  const CLOSED_SEC = 7201;  // 120:01
   const DOTS=5;
   const CYCLE_SEC = OPEN_SEC + CLOSED_SEC;
 
@@ -181,39 +195,42 @@
 
   const adminPanel=document.getElementById('adminPanel');
   const inputTime=document.getElementById('openTime');
-  const applyBtn=document.getElementById('applyAnchor');
-  const minsNextInput=document.getElementById('minsNext');
-  const applyNextBtn=document.getElementById('applyNext');
-  const pauseBtn=document.getElementById('pauseResume');
+  const btnPublish=document.getElementById('publishGlobal');
+  const btnPause=document.getElementById('togglePauseGlobal');
+  const btnReload=document.getElementById('reload');
+  const btnLogout=document.getElementById('logout');
 
+  const modal=document.getElementById('modal');
+  const pwdInput=document.getElementById('pwd');
+  const doLoginBtn=document.getElementById('doLogin');
+  const closeModal=document.getElementById('closeModal');
+
+  /* Privacy */
   const ppBtn=document.getElementById('ppBtn');
   const ppSection=document.getElementById('privacy');
 
-  /* ===== Etat ===== */
-  const LS_KEY='mammon_anchor_iso';
-  let cfg={anchor_iso:null, paused:false};
+  /* ===== State global ===== */
+  let cfg={anchor_iso:null, manual_offset_seconds:0, paused:false};
+  let isAdmin=false, adminPwd=null;
 
   /* ===== Utils ===== */
   const pad=n=>String(n).padStart(2,'0');
   const fmt=s=>{s=Math.max(0,Math.floor(s)); return `${pad(s/3600|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`;};
   const pretty=ms=>new Date(ms).toLocaleString('fr-FR',{dateStyle:'short', timeStyle:'short'});
-  const anchorMs=()=> cfg.anchor_iso ? Date.parse(cfg.anchor_iso) : Date.now();
+  const toISO=ms=>new Date(ms - new Date().getTimezoneOffset()*60000).toISOString().replace('.000Z','Z');
+  const anchorMs=()=>Date.parse(cfg.anchor_iso)+(cfg.manual_offset_seconds||0)*1000;
   const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
 
-  function computeAnchorIsoFromHHMM(hhmm){
-    const [hh,mm,ssRaw]=hhmm.split(':');
-    const hhN=Number(hh), mmN=Number(mm), ssN=ssRaw?Number(ssRaw):0;
-    const now=new Date();
-    const d=new Date(now); d.setHours(hhN,mmN,ssN,0);
-    if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1); // si futur -> hier
-    return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().replace('.000Z','Z');
-  }
-
-  function setAnchorISO(iso){
-    cfg.anchor_iso=iso;
-    localStorage.setItem(LS_KEY, iso);
-    elMode.textContent='Ancre : '+pretty(Date.parse(iso))+' • Cycle: ouvert 65:01 / fermé 120:01';
-    render();
+  /* ===== LED mapping (progress par *reste*) ===== */
+  function updateLeds(isOpen, remain, phaseSec){
+    const seg = phaseSec / DOTS;
+    // En phase ouverte : 5→0 verts (à mesure que ça se vide)
+    // En phase fermée : 0→5 verts (à mesure qu’on approche de l’ouverture)
+    let greenCount = isOpen ? Math.ceil(remain/seg) : (DOTS - Math.ceil(remain/seg));
+    greenCount = Math.max(0, Math.min(DOTS, greenCount));
+    for(let i=0;i<DOTS;i++) leds[i].className='led '+(i<greenCount?'g':'r');
+    const ledMin = Math.round((phaseSec/60/DOTS)*10)/10;
+    elLedInfo.textContent = `Chaque LED = ${ledMin} min (${isOpen?'phase ouverte':'phase fermée'})`;
   }
 
   /* ===== Rendu ===== */
@@ -227,76 +244,84 @@
       elLedInfo.textContent='Chaque LED = — min';
       return;
     }
-
     const now=Date.now();
     const elapsed=(((now-anchorMs())/1000)%CYCLE_SEC+CYCLE_SEC)%CYCLE_SEC;
-    const isOpen=elapsed<OPEN_SEC;
-    const remain=isOpen ? OPEN_SEC-elapsed : CYCLE_SEC-elapsed;
+    const isOpen = elapsed < OPEN_SEC;
+    const phaseSec = isOpen ? OPEN_SEC : CLOSED_SEC;
+    const phaseElapsed = isOpen ? elapsed : (elapsed-OPEN_SEC);
+    const remain = phaseSec - phaseElapsed;
 
     elClock.textContent = fmt(remain);
     elStatus.className='status '+(isOpen?'open':'closed');
     elStatus.textContent = 'Hangar '+(isOpen?'Open':'Closed') + (cfg.paused?' (Paused)':'');
     elSub.textContent = 'Prochaine transition ('+(isOpen?'fermeture':'ouverture')+') dans '+fmt(remain);
 
-    const phaseSec=isOpen?OPEN_SEC:CLOSED_SEC;
-    const ledMin = Math.round(phaseSec/60/DOTS);
-    elLedInfo.textContent = `Chaque LED = ${ledMin} min (${isOpen?'phase ouverte':'phase fermée'})`;
-
-    const progress=remain/phaseSec;
-    let greenCount = isOpen ? Math.ceil(progress*DOTS) : DOTS - Math.ceil(progress*DOTS);
-    greenCount=Math.max(0,Math.min(DOTS,greenCount));
-    for(let i=0;i<DOTS;i++) leds[i].className='led '+(i<greenCount?'g':'r');
+    updateLeds(isOpen, remain, phaseSec);
 
     const nClose=nextAfter(anchorMs()+OPEN_SEC*1000, CYCLE_SEC*1000, now);
     const nOpen =nextAfter(anchorMs(),                CYCLE_SEC*1000, now);
     elNext.textContent = `Prochaine fermeture : ${pretty(nClose)} • Prochaine ouverture : ${pretty(nOpen)}`;
   }
 
-  /* ===== Chargement ===== */
-  function loadCfg(){
-    const ls=localStorage.getItem(LS_KEY);
-    if(ls){ cfg.anchor_iso=ls; elMode.textContent='Ancre (local) : '+pretty(Date.parse(ls)); }
-    // Préremplir l’input
-    const d=new Date(); inputTime.value=`${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  /* ===== Admin session ===== */
+  function setAdminUI(v){ isAdmin=v; adminPanel.style.display=v?'flex':'none'; if(!v) adminPwd=null; }
+  const secretLogo = document.getElementById('secretLogo');
+  secretLogo.addEventListener('dblclick', ()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); });
+  document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='a'){ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } });
+  if (location.hash === '#admin'){ setTimeout(()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }, 50); }
+
+  doLoginBtn.onclick= ()=>{ adminPwd=pwdInput.value.trim(); if(!adminPwd){ alert('Entre le mot de passe'); return; } setAdminUI(true); modal.style.display='none'; };
+  closeModal.onclick=()=>{ modal.style.display='none'; };
+  btnLogout.onclick=()=> setAdminUI(false);
+
+  /* ===== API helpers ===== */
+  async function loadCfg(){
+    try{
+      const r=await fetch('/api/anchor?ts='+Date.now(),{cache:'no-store'});
+      if(!r.ok) throw new Error(r.status);
+      const js=await r.json();
+      cfg.anchor_iso=js.anchor_iso||cfg.anchor_iso;
+      cfg.manual_offset_seconds=js.manual_offset_seconds||0;
+      cfg.paused=!!js.paused;
+      elMode.textContent='Config globale chargée. Dernière MAJ : '+pretty(Date.parse(cfg.anchor_iso));
+    }catch{
+      // si pas d'API, on garde la config locale initialisée plus bas
+    }
     render();
   }
 
-  /* ===== Admin (caché) ===== */
-  function openAdmin(){ adminPanel.style.display='flex'; }
-  function closeAdmin(){ adminPanel.style.display='none'; }
+  function computeAnchorIsoFromHHMM(hhmm){
+    const [hh,mm]=hhmm.split(':').map(Number);
+    const now=new Date();
+    const d=new Date(now); d.setHours(hh,mm,0,0);
+    if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1); // si futur → hier
+    return toISO(d.getTime());
+  }
 
-  // Triggers secrets
-  const secretLogo = document.getElementById('secretLogo');
-  secretLogo.addEventListener('dblclick', openAdmin);
-  document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='a'){ openAdmin(); }});
-  if (location.hash === '#admin'){ setTimeout(openAdmin, 50); }
-
-  // Appliquer à partir de la dernière ouverture (HH:MM[:SS])
-  applyBtn.addEventListener('click', ()=>{
-    const val=inputTime.value.trim();
-    if(!val) return alert('Indique HH:MM ou HH:MM:SS');
+  btnPublish.onclick= async ()=>{
+    if(!isAdmin || !adminPwd){ modal.style.display='flex'; return; }
+    const val=inputTime.value.trim(); if(!val) return alert('Indique HH:MM');
     const iso=computeAnchorIsoFromHHMM(val);
-    setAnchorISO(iso);
-  });
+    try{
+      const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:adminPwd,anchor_iso:iso,manual_offset_seconds:0,paused:false})});
+      if(!r.ok){ if(r.status===401){ setAdminUI(false); return alert('Mot de passe incorrect'); } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
+      cfg=await r.json();
+      alert('✅ Mise à jour globale enregistrée');
+      elMode.textContent='Config globale chargée. Dernière MAJ : '+pretty(Date.parse(cfg.anchor_iso));
+      render();
+    }catch(err){ alert('Erreur réseau'); console.error(err); }
+  };
 
-  // Synchroniser via "Time until next change: mm.ss"
-  applyNextBtn.addEventListener('click', ()=>{
-    const v=Number(minsNextInput.value);
-    if(!isFinite(v) || v<0) return alert('Indique les minutes restantes (ex: 82.17)');
-    const msToNext = Math.round(v*60*1000);
-    // On va estimer la phase actuelle: si on est en phase fermée, le "next change" = ouverture,
-    // si phase ouverte, le "next change" = fermeture. Comme on ne sait pas, on pose l'ancre
-    // sur "prochaine ouverture" = maintenant + msToNext, puis on recalcule normalement.
-    const targetOpen = Date.now() + msToNext;
-    const iso = new Date(targetOpen - (new Date().getTimezoneOffset()*60000)).toISOString().replace('.000Z','Z');
-    setAnchorISO(iso);
-  });
+  btnPause.onclick= async ()=>{
+    if(!isAdmin || !adminPwd){ modal.style.display='flex'; return; }
+    try{
+      const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:adminPwd,anchor_iso:cfg.anchor_iso,manual_offset_seconds:cfg.manual_offset_seconds||0,paused:!cfg.paused})});
+      if(!r.ok){ if(r.status===401){ setAdminUI(false); return alert('Mot de passe incorrect'); } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
+      cfg=await r.json(); render();
+    }catch(err){ alert('Erreur réseau'); console.error(err); }
+  };
 
-  // Pause/Resume
-  pauseBtn.addEventListener('click', ()=>{
-    cfg.paused=!cfg.paused;
-    pauseBtn.textContent = cfg.paused ? 'Reprendre' : 'Pause';
-  });
+  btnReload.onclick= loadCfg;
 
   /* ===== Privacy: bouton toggle ===== */
   function setPrivacyVisibility(show){
@@ -315,11 +340,38 @@
   ppBtn.addEventListener('click', togglePrivacy);
   if (location.hash === '#privacy') setPrivacyVisibility(true);
 
+  /* ===== Init: ancre = aujourd’hui 16:28 + offset pour 2 LED vertes ===== */
+  function initDefaultAnchorWithTwoGreen(){
+    // 1) Ancre = aujourd’hui 16:28 (heure locale)
+    const now=new Date();
+    const d=new Date(now); d.setHours(16,28,0,0);
+    if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1); // si encore à venir aujourd’hui, on prend hier
+    const baseAnchorMs = d.getTime();
+    cfg.anchor_iso = toISO(baseAnchorMs);
+
+    // 2) Forcer l’affichage actuel à "2 LED vertes" en phase fermée
+    // En phase fermée, green = DOTS - ceil(remain/seg). Pour 2 LED → ceil(remain/seg)=3 → remain ∈ (48,72] min.
+    const segClosed = CLOSED_SEC / DOTS;             // ~1440.2 s
+    const targetRemain = 60*60;                      // 60 min pile (au milieu de la fenêtre 48–72)
+    const desiredElapsedSinceAnchor = OPEN_SEC + (CLOSED_SEC - targetRemain); // temps écoulé dans le cycle
+    const nowMs = Date.now();
+    const neededAnchorMs = nowMs - desiredElapsedSinceAnchor*1000;
+    cfg.manual_offset_seconds = Math.round((neededAnchorMs - baseAnchorMs)/1000);
+
+    elMode.textContent = 'Ancre par défaut: 16:28 (local) • Affichage initial calé à 2 LED vertes';
+  }
+
   /* ===== Tick ===== */
   setInterval(()=>{ if(!cfg.paused) render(); },1000);
 
   /* Go */
-  loadCfg();
+  initDefaultAnchorWithTwoGreen(); // ancre 16:28 + 2 LED vertes
+  // Optionnel: charger config serveur si dispo (décommente si tu veux prioriser l’API au démarrage)
+  // loadCfg();
+  // Préremplir l’input admin
+  (function(){ const t=new Date(); inputTime.value=`${pad(16)}:${pad(28)}`; })();
+  // Démarre un 1er rendu immédiat
+  render();
 </script>
 </body>
 </html>
