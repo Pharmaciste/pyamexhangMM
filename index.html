@@ -7,8 +7,14 @@
 <meta name="color-scheme" content="dark">
 <style>
   :root{
-    --bg:#0a0d14;--panel:#0b0f1aee;--panel-border:rgba(255,255,255,.08);
-    --text:#ffffff;--ok:#22c55e;--danger:#ef4444;--accent:#fbbf24;--accent-2:#fde047;--shadow:rgba(0,0,0,.45)
+    --bg:#0a0d14;
+    --panel:#0b0f1aee;
+    --panel-border:rgba(255,255,255,.08);
+    --text:#ffffff;
+    --ok:#22c55e;
+    --danger:#ef4444;
+    --accent:#fbbf24; --accent-2:#fde047;
+    --shadow:rgba(0,0,0,.45);
   }
   *{box-sizing:border-box} html,body{margin:0;padding:0}
   body{
@@ -19,6 +25,7 @@
       var(--bg) url('https://images.unsplash.com/photo-1517817748496-62bc3047b9ff?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat fixed;
     min-height:100vh;
   }
+  .wm{position:fixed; inset:0; pointer-events:none; z-index:0; background:url('/assets/mammon.png') center 35% / min(80vmin,900px) no-repeat; opacity:.09; filter: drop-shadow(0 0 18px rgba(0,0,0,.6))}
   .overlay{position:relative; z-index:1; background:linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.35)); min-height:100vh;}
   .wrap{max-width:980px; margin:0 auto; padding:18px 18px 60px;}
 
@@ -43,7 +50,7 @@
   .meta{margin-top:10px; font-size:12px; opacity:.9}
   .next{margin-top:12px; font-size:13px; opacity:.96}
 
-  /* Privacy (toggle) */
+  /* CTA Privacy */
   .pp-cta-wrap{margin:22px 0 8px; display:flex; justify-content:center}
   .pp-cta{padding:9px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:#0f172a; color:#fff; text-decoration:none}
   .pp-cta:hover{border-color:#334155}
@@ -53,30 +60,44 @@
   .privacy h3{margin:16px 0 6px; font-size:16px; font-weight:800}
   .privacy p, .privacy li{color:#dbeafe}
 
-  /* Admin (protégé) */
+  /* Discord msg */
+  .discord-msg{margin-bottom:16px; text-align:center; font-size:14px;}
+  .discord-msg a{color:var(--accent); font-weight:bold; text-decoration:none;}
+  .discord-msg a:hover{text-decoration:underline;}
+
+  /* Admin (caché par mot de passe) */
   .btn{padding:9px 12px; border-radius:12px; border:1px solid var(--panel-border); background:#0f172a; color:#fff; cursor:pointer}
   .btn.primary{background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111; border-color:transparent; font-weight:900}
   .admin{display:none; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; margin-top:16px}
-  .admin input[type="time"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff; width:140px}
+  .admin input[type="time"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
   .modal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55); z-index:10}
   .modal .box{background:#0f1220; border:1px solid var(--panel-border); border-radius:12px; padding:16px; width:100%; max-width:360px}
 </style>
 </head>
 <body>
+<div class="wm" aria-hidden="true"></div>
 <div class="overlay">
   <div class="wrap">
 
     <!-- Header -->
     <header>
       <div class="brand">
-        <div class="brand-logo" id="secretLogo" aria-hidden="true" title="Double-clic pour Admin"></div>
+        <div class="brand-logo" id="secretLogo" aria-hidden="true" title=" "></div>
         <div class="brand-title">MAMMON TIMER</div>
         <span class="badge">LIVE</span>
       </div>
       <div class="header-right">
-        <span class="mini-badge" id="patchBadge">Updated for Star Citizen Patch 4.3.0-LIVE (Hotfix 10188864)</span>
+        <span class="mini-badge" id="patchBadge" title="Star Citizen patch">
+          Updated for Star Citizen Patch 4.3.0-LIVE (Hotfix 10188864)
+        </span>
       </div>
     </header>
+
+    <!-- Message Discord -->
+    <div class="panel discord-msg">
+      🚀 Envie de rejoindre la <strong>MAMMON</strong> ? 
+      <a href="https://discord.gg/aUBDScHG" target="_blank" rel="noopener">Rejoins notre Discord ici !</a>
+    </div>
 
     <!-- Timer -->
     <section class="panel">
@@ -86,23 +107,22 @@
       <div class="row" id="leds">
         <div class="led r"></div><div class="led r"></div><div class="led r"></div><div class="led r"></div><div class="led r"></div>
       </div>
-      <div class="led-info" id="ledInfo">Fermé : 1 LED ≈ 24 min • Ouvert : 1 LED = 12 min (+ 5 min “black”)</div>
+      <div class="led-info" id="ledInfo">Chaque LED = — min</div>
 
       <div class="status closed" id="status">Hangar Closed</div>
       <div class="sub" id="subtitle">Prochaine transition dans --:--:--</div>
 
       <div class="next" id="nextTimes">Prochaine fermeture : — • Prochaine ouverture : —</div>
-      <div class="meta" id="modeMeta">Ancre initiale : <b>prochaine ouverture à 16:28 (heure locale)</b>. Modifiable via Admin (mot de passe).</div>
+      <div class="meta" id="modeMeta">Aucune ancre définie.</div>
 
-      <!-- Admin (après login) -->
+      <!-- Admin (caché : apparaît après login) -->
       <div class="admin" id="adminPanel">
         <label for="openTime"><strong>Dernière ouverture (HH:MM)</strong> :</label>
         <input type="time" id="openTime" step="60" />
-        <button class="btn primary" id="applyLocal">Appliquer (local)</button>
-        <button class="btn" id="togglePause">Pause/Reprendre</button>
-        <button class="btn" id="reset1628">Réinitialiser → prochaine 16:28</button>
+        <button class="btn primary" id="publishGlobal">Mettre à jour GLOBAL</button>
+        <button class="btn" id="togglePauseGlobal">Pause/Reprendre GLOBAL</button>
+        <button class="btn" id="reload">Recharger config</button>
         <button class="btn" id="logout">Se déconnecter</button>
-        <div style="flex-basis:100%; text-align:center; font-size:12px; opacity:.8">Astuce : mets l’heure de la <em>dernière</em> ouverture observée pour un calage précis.</div>
       </div>
     </section>
 
@@ -115,19 +135,28 @@
         <h2>Privacy Policy</h2>
         <p><em>Effective Date: September 8, 2025</em></p>
 
-        <p>We do <strong>not</strong> collect, sell, or share personal data. Timer preferences (anchor time, pause) may be saved in your browser’s <strong>Local Storage</strong>. This data stays on your device.</p>
+        <p>Welcome! Your privacy matters to us. This Policy explains what we do (and don’t) collect, how we may use cookies/ads in the future, and your rights.</p>
+
+        <h3>Information We Collect</h3>
+        <p>We do <strong>not</strong> collect, sell, or share personal data. Timer preferences are saved in your browser’s <strong>Local Storage</strong> for convenience. This data stays on your device and is never transmitted to our servers.</p>
 
         <h3>Cookies &amp; Tracking</h3>
-        <p>No cookies currently. If ads are enabled in the future, third parties may use cookies you can control in your browser.</p>
+        <p>We currently do not use cookies. In the future, we may enable cookies or similar technologies to show ads (e.g., Google AdSense, Ezoic). These may process non-identifiable data (e.g., page views) to serve relevant ads. You can control or delete cookies in your browser settings at any time.</p>
+
+        <h3>Third-Party Services (Ads)</h3>
+        <p>If/when ads are enabled, third-party ad networks (e.g., Google AdSense, Ezoic) may use cookies and similar tech to deliver and measure ads. Please review their respective privacy policies for details on their processing.</p>
 
         <h3>Your Rights</h3>
-        <p>Depending on your location (GDPR/CCPA), you may have rights like access, correction, deletion. Since we don’t collect personal data, these mainly relate to cookies if enabled later.</p>
+        <p>Depending on your location, you may have rights under laws such as <strong>GDPR</strong> (EU/EEA/UK) or <strong>CCPA/CPRA</strong> (California), including access, correction, deletion, objection/restriction, and withdrawing consent (where applicable). Because we do not collect personal data, these rights mainly relate to cookie preferences you control in your browser if/when ads are enabled.</p>
 
         <h3>Data Retention</h3>
-        <p>Local Storage data remains on your device until you clear it.</p>
+        <p>We do not maintain user profiles or store personal data. Local Storage data remains on your device until you clear it (e.g., “Clear Site Data” in your browser).</p>
 
-        <h3>Changes</h3>
-        <p>We may update this Policy from time to time. We will post changes here with a new Effective Date.</p>
+        <h3>Children’s Privacy</h3>
+        <p>This site is for a general audience and does not knowingly collect information from children under 13 (or higher local age threshold).</p>
+
+        <h3>Changes to This Policy</h3>
+        <p>We may update this Policy from time to time. We will post changes here with a new Effective Date. Please check this page periodically.</p>
       </div>
     </section>
 
@@ -135,11 +164,11 @@
 </div>
 
 <!-- Modal Admin (login) -->
-<div class="modal" id="modal" style="display:none">
+<div class="modal" id="modal">
   <div class="box">
     <h3 style="margin:0 0 10px; font-size:18px">Connexion admin</h3>
     <div class="field" style="display:flex; gap:8px">
-      <input type="password" id="pwd" placeholder="Mot de passe admin" style="flex:1;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff" />
+      <input type="password" id="pwd" placeholder="Mot de passe admin (Vercel → ADMIN_PASSWORD)" style="flex:1;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff" />
       <button class="btn" id="doLogin">OK</button>
     </div>
     <div class="actions" style="display:flex; gap:8px; margin-top:10px; justify-content:flex-end">
@@ -149,16 +178,13 @@
 </div>
 
 <script>
-  /* ====== Réglages de cycle ====== */
-  const OPEN_SEC   = 65 * 60;     // 65:00
-  const CLOSED_SEC = 7201;        // ~120:01
-  const CYCLE_SEC  = OPEN_SEC + CLOSED_SEC;
-  const DOTS = 5;
+  /* ===== Durées (calibrées) ===== */
+  const OPEN_SEC   = 65 * 60;   // 65:00 -> 3900s
+  const CLOSED_SEC = 7201;      // ~120:01
+  const DOTS=5;
+  const CYCLE_SEC = OPEN_SEC + CLOSED_SEC;
 
-  /* ====== Admin (mot de passe local) ====== */
-  const ADMIN_PASSWORD = 'MAMMON'; // ⚠️ change-moi
-
-  /* ====== DOM ====== */
+  /* ===== Eléments ===== */
   const elClock=document.getElementById('clock');
   const elStatus=document.getElementById('status');
   const elSub=document.getElementById('subtitle');
@@ -169,119 +195,167 @@
 
   const adminPanel=document.getElementById('adminPanel');
   const inputTime=document.getElementById('openTime');
-  const btnApply=document.getElementById('applyLocal');
-  const btnPause=document.getElementById('togglePause');
-  const btnReset1628=document.getElementById('reset1628');
+  const btnPublish=document.getElementById('publishGlobal');
+  const btnPause=document.getElementById('togglePauseGlobal');
+  const btnReload=document.getElementById('reload');
   const btnLogout=document.getElementById('logout');
 
   const modal=document.getElementById('modal');
   const pwdInput=document.getElementById('pwd');
   const doLoginBtn=document.getElementById('doLogin');
   const closeModal=document.getElementById('closeModal');
-  const secretLogo=document.getElementById('secretLogo');
 
+  /* Privacy */
   const ppBtn=document.getElementById('ppBtn');
   const ppSection=document.getElementById('privacy');
 
-  /* ====== Etat (Local Storage) ====== */
-  const LS_ANCHOR='mammon_anchor_iso';
-  const LS_PAUSE='mammon_paused';
-  let anchor_iso=null; // ISO d'une heure D'OUVERTURE
-  let paused=false;
-  let isAdmin=false;
+  /* ===== State global ===== */
+  let cfg={anchor_iso:null, manual_offset_seconds:0, paused:false};
+  let isAdmin=false, adminPwd=null;
 
-  /* ====== Utils ====== */
+  /* ===== Utils ===== */
   const pad=n=>String(n).padStart(2,'0');
   const fmt=s=>{s=Math.max(0,Math.floor(s)); return `${pad(s/3600|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`;};
   const pretty=ms=>new Date(ms).toLocaleString('fr-FR',{dateStyle:'short', timeStyle:'short'});
   const toISO=ms=>new Date(ms - new Date().getTimezoneOffset()*60000).toISOString().replace('.000Z','Z');
+  const anchorMs=()=>Date.parse(cfg.anchor_iso)+(cfg.manual_offset_seconds||0)*1000;
+  const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
 
-  function saveState(){
-    try{ localStorage.setItem(LS_ANCHOR, anchor_iso||''); localStorage.setItem(LS_PAUSE, paused?'1':'0'); }catch{}
+  /* ===== LED logic ===== */
+  function greenCountOpen(remainSec){
+    // ouvert = 65 min : pendant 60 min -> 5..1 LED (chaque 12 min),
+    // puis 5 dernières minutes -> 0 LED (black)
+    if (remainSec <= 5*60) return 0;
+    const eff = Math.min(60*60, remainSec - 5*60);      // secondes “LED-actives”
+    return Math.max(0, Math.min(DOTS, Math.ceil(eff / (12*60))));
   }
-  function loadState(){
-    try{
-      const a=localStorage.getItem(LS_ANCHOR); if(a) anchor_iso=a;
-      const p=localStorage.getItem(LS_PAUSE);  paused=(p==='1');
-    }catch{}
+  function greenCountClosed(remainSec){
+    // fermé ≈ 120:01, LED deviennent vertes par paliers de ~24 min
+    const seg = CLOSED_SEC / DOTS;                      // ~1440.2 s
+    let cnt = DOTS - Math.ceil(remainSec / seg);        // 0..5
+    return Math.max(0, Math.min(DOTS, cnt));
+  }
+  function updateLeds(isOpen, remain, phaseSec){
+    let green = isOpen ? greenCountOpen(remain) : greenCountClosed(remain);
+    for(let i=0;i<DOTS;i++) leds[i].className='led '+(i<green?'g':'r');
+    // Texte d’aide
+    if (isOpen){
+      elLedInfo.textContent = `Ouvert : 1 LED = 12 min • dernières 5 min sans LED`;
+    }else{
+      elLedInfo.textContent = `Fermé : 1 LED ≈ 24 min`;
+    }
   }
 
-  function anchorMs(){
-    return anchor_iso ? Date.parse(anchor_iso) : Date.now();
+  /* ===== Rendu ===== */
+  function render(){
+    if(!cfg.anchor_iso){
+      elClock.textContent='--:--:--';
+      elStatus.className='status closed';
+      elStatus.textContent='Définis une heure d’ouverture';
+      elSub.textContent='Aucune ancre définie';
+      elNext.textContent='—';
+      elLedInfo.textContent='Chaque LED = — min';
+      return;
+    }
+    const now=Date.now();
+    const elapsed=(((now-anchorMs())/1000)%CYCLE_SEC+CYCLE_SEC)%CYCLE_SEC;
+    const isOpen = elapsed < OPEN_SEC;
+    const phaseSec = isOpen ? OPEN_SEC : CLOSED_SEC;
+    const phaseElapsed = isOpen ? elapsed : (elapsed-OPEN_SEC);
+    const remain = phaseSec - phaseElapsed;
+
+    elClock.textContent = fmt(remain);
+    elStatus.className='status '+(isOpen?'open':'closed');
+    elStatus.textContent = 'Hangar '+(isOpen?'Open':'Closed') + (cfg.paused?' (Paused)':'');
+    elSub.textContent = 'Prochaine transition ('+(isOpen?'fermeture':'ouverture')+') dans '+fmt(remain);
+
+    updateLeds(isOpen, remain, phaseSec);
+
+    const nClose=nextAfter(anchorMs()+OPEN_SEC*1000, CYCLE_SEC*1000, now);
+    const nOpen =nextAfter(anchorMs(),                CYCLE_SEC*1000, now);
+    elNext.textContent = `Prochaine fermeture : ${pretty(nClose)} • Prochaine ouverture : ${pretty(nOpen)}`;
   }
 
-  function nextAfter(startMs, stepMs, nowMs){
-    return (nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
-  }
+  /* ===== Admin session (cachée) ===== */
+  function setAdminUI(v){ isAdmin=v; adminPanel.style.display=v?'flex':'none'; if(!v) adminPwd=null; }
+  const secretLogo = document.getElementById('secretLogo');
+  secretLogo.addEventListener('dblclick', ()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); });
+  document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='a'){ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } });
+  if (location.hash === '#admin'){ setTimeout(()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }, 50); }
 
-  function computeISOFromHHMM(hhmm){
+  doLoginBtn.onclick= ()=>{ adminPwd=pwdInput.value.trim(); if(!adminPwd){ alert('Entre le mot de passe'); return; } setAdminUI(true); modal.style.display='none'; };
+  closeModal.onclick=()=>{ modal.style.display='none'; };
+  btnLogout.onclick=()=> setAdminUI(false);
+
+  function computeAnchorIsoFromHHMM(hhmm){
     const [hh,mm]=hhmm.split(':').map(Number);
     const now=new Date();
     const d=new Date(now); d.setHours(hh,mm,0,0);
-    // “Dernière ouverture” => si l'heure est dans le futur, prendre hier
-    if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1);
+    if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1); // si futur → hier
     return toISO(d.getTime());
   }
 
-  function setAnchorToNext1628(){
-    const now=new Date();
-    const next=new Date(now);
-    next.setHours(16,28,0,0);
-    if(next.getTime()<=now.getTime()) next.setDate(next.getDate()+1); // prochaine occurrence
-    anchor_iso=toISO(next.getTime());
-    elMode.textContent='Ancre initiale : prochaine ouverture à 16:28 ('+pretty(next.getTime())+')';
-    saveState();
+  btnPublish.onclick= async ()=>{
+    if(!isAdmin || !adminPwd){ modal.style.display='flex'; return; }
+    const val=inputTime.value.trim(); if(!val) return alert('Indique HH:MM');
+    const iso=computeAnchorIsoFromHHMM(val);
+    try{
+      const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:adminPwd,anchor_iso:iso,manual_offset_seconds:0,paused:false})});
+      if(!r.ok){ if(r.status===401){ setAdminUI(false); return alert('Mot de passe incorrect'); } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
+      cfg=await r.json();
+      alert('✅ Mise à jour globale enregistrée');
+      elMode.textContent='Config globale chargée. Dernière MAJ : '+pretty(Date.parse(cfg.anchor_iso));
+      render();
+    }catch(err){ alert('Erreur réseau'); console.error(err); }
+  };
+
+  btnPause.onclick= async ()=>{
+    if(!isAdmin || !adminPwd){ modal.style.display='flex'; return; }
+    try{
+      const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:adminPwd,anchor_iso:cfg.anchor_iso,manual_offset_seconds:cfg.manual_offset_seconds||0,paused:!cfg.paused})});
+      if(!r.ok){ if(r.status===401){ setAdminUI(false); return alert('Mot de passe incorrect'); } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
+      cfg=await r.json(); render();
+    }catch(err){ alert('Erreur réseau'); console.error(err); }
+  };
+
+  btnReload.onclick= async ()=>{
+    try{
+      const r=await fetch('/api/anchor?ts='+Date.now(),{cache:'no-store'});
+      if(!r.ok) throw new Error(r.status);
+      const js=await r.json();
+      cfg.anchor_iso=js.anchor_iso||cfg.anchor_iso;
+      cfg.manual_offset_seconds=js.manual_offset_seconds||0;
+      cfg.paused=!!js.paused;
+      elMode.textContent='Config globale chargée. Dernière MAJ : '+pretty(Date.parse(cfg.anchor_iso));
+      render();
+    }catch{ alert('Impossible de recharger la config'); }
+  };
+
+  /* ===== Privacy: bouton toggle ===== */
+  function setPrivacyVisibility(show){
+    ppSection.style.display = show ? 'block' : 'none';
+    ppSection.setAttribute('aria-hidden', String(!show));
+    ppBtn.setAttribute('aria-expanded', String(show));
+    if (show) ppSection.scrollIntoView({behavior:'smooth'});
   }
-
-  /* ====== LED logic ====== */
-  // fermé : 0→5 vertes (≈24 min chacune). La 5e n’apparaît qu’au tout dernier instant.
-  function greensClosed(remainSec){
-    const seg=CLOSED_SEC/DOTS;
-    return Math.max(0, Math.min(DOTS, DOTS - Math.ceil(remainSec/seg)));
+  function togglePrivacy(e){
+    e && e.preventDefault();
+    const showing = ppSection.style.display === 'block';
+    setPrivacyVisibility(!showing);
+    if (!showing) { history.replaceState(null, '', '#privacy'); }
+    else { history.replaceState(null, '', ' '); }
   }
-  // ouvert : 5→0 vertes (12 min chacune), puis 5 min “black” (0 LED mais ouvert)
-  function greensOpen(elapsedOpenSec){
-    if(elapsedOpenSec>=60*60 && elapsedOpenSec<65*60) return 0; // black final 5 min
-    if(elapsedOpenSec>=65*60) return DOTS; // sécurité modulo
-    const step=Math.floor(elapsedOpenSec/(12*60)); // 0..4
-    return Math.max(0, Math.min(DOTS, DOTS - step));
-  }
+  ppBtn.addEventListener('click', togglePrivacy);
+  if (location.hash === '#privacy') setPrivacyVisibility(true);
 
-  function render(){
-    if(!anchor_iso){
-      elClock.textContent='--:--:--';
-      elStatus.className='status closed';
-      elStatus.textContent='Initialisation…';
-      elSub.textContent='Aucune ancre définie';
-      elNext.textContent='—';
-      return;
-    }
+  /* ===== Tick ===== */
+  setInterval(()=>{ if(!cfg.paused) render(); },1000);
 
-    const now=Date.now();
-    const base=anchorMs();
-    const elapsed=((now-base)/1000)%CYCLE_SEC; // secondes écoulées dans le cycle
-    const inOpen = elapsed < OPEN_SEC;
+  /* ===== Démarrage ===== */
+  // Par défaut aucun anchor_iso => l’admin doit définir “Dernière ouverture (HH:MM)”.
+  // Si tu veux un anchor par défaut (ex. 16:28), dé-commente :
+  // (function setDefault(){ const now=new Date(); const d=new Date(now); d.setHours(16,28,0,0); if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1); cfg.anchor_iso = toISO(d.getTime()); elMode.textContent='Ancre par défaut : '+pretty(d.getTime()); render(); })();
 
-    const phaseElapsed = inOpen ? elapsed : (elapsed-OPEN_SEC);
-    const phaseSec     = inOpen ? OPEN_SEC : CLOSED_SEC;
-    const remain       = phaseSec - phaseElapsed;
-
-    // Clock + status
-    elClock.textContent=fmt(remain);
-    elStatus.className='status '+(inOpen?'open':'closed');
-    elStatus.textContent='Hangar '+(inOpen?'Open':'Closed')+(paused?' (Paused)':'');
-    elSub.textContent='Prochaine transition ('+(inOpen?'fermeture':'ouverture')+') dans '+fmt(remain);
-
-    // LEDs
-    const green = inOpen ? greensOpen(phaseElapsed) : greensClosed(remain);
-    for(let i=0;i<DOTS;i++) leds[i].className='led '+(i<green?'g':'r');
-    elLedInfo.textContent = inOpen ? 'Ouvert : 1 LED = 12 min • dernières 5 min sans LED'
-                                   : 'Fermé : 1 LED ≈ 24 min';
-
-    // Prochaines échéances
-    const nClose=nextAfter(base+OPEN_SEC*1000, CYCLE_SEC*1000, now);
-    const nOpen =nextAfter(base,                CYCLE_SEC*1000, now);
-    elNext.textContent=`Prochaine fermeture : ${pretty(nClose)} • Prochaine ouverture : ${pretty(nOpen)}`;
-  }
-
-  /* ======*
+</script>
+</body>
+</html>
