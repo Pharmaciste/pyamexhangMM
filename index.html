@@ -21,6 +21,11 @@
     box-shadow:0 8px 28px rgba(0,0,0,.35);
     backdrop-filter: blur(4px);
   }
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .brand{font-weight:800;letter-spacing:.2px;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+  .login-btn{padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#111827;color:#fff;cursor:pointer}
+  .login-btn:hover{border-color:#3f3f46}
+
   h1{margin:6px 0 10px; font-size:28px; font-weight:800; text-shadow:0 1px 2px rgba(0,0,0,.4)}
   .clock{font:34px/1.1 ui-monospace,Menlo,Consolas,monospace; margin:6px 0 10px}
   .status{margin:8px 0 2px; font-weight:800}
@@ -36,127 +41,31 @@
   .g{ background:#22c55e; box-shadow: inset 0 0 14px rgba(0,0,0,.5), 0 0 14px rgba(34,197,94,.4) }
   .r{ background:#ef4444; box-shadow: inset 0 0 14px rgba(0,0,0,.5), 0 0 14px rgba(239,68,68,.35) }
 
-  /* --- Admin (caché par défaut) --- */
+  /* --- Admin (masqué tant qu'on n'est pas connecté) --- */
   .admin{display:none; margin-top:14px; gap:8px; flex-wrap:wrap; justify-content:center}
   .btn{padding:8px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:#111827; color:#fff; cursor:pointer}
   .btn:hover{border-color:#3f3f46}
   .note{opacity:.8; font-size:12px; margin-top:8px}
   .hint{opacity:.7; font-size:12px; text-align:center; margin-top:12px}
+
+  /* --- Modal login --- */
+  .modal{position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; padding:20px}
+  .modal .box{background:#0f1220; border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:16px; width:100%; max-width:360px}
+  .modal h3{margin:0 0 10px; font-size:18px}
+  .field{display:flex; gap:8px}
+  .field input{flex:1; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
+  .actions{display:flex; gap:8px; margin-top:10px; justify-content:flex-end}
 </style>
 </head>
 <body>
 <div class="overlay">
   <div class="wrap">
     <div class="panel">
+      <header>
+        <div class="brand">Contested Zone Timers</div>
+        <button class="login-btn" id="loginBtn">Admin Login</button>
+      </header>
+
       <h1>Executive Hangar Timer</h1>
 
-      <div class="clock" id="clock">--:--:--</div>
-
-      <div class="row" id="dots">
-        <!-- 5 pastilles -->
-        <div class="dot g"></div><div class="dot g"></div><div class="dot r"></div><div class="dot r"></div><div class="dot r"></div>
-      </div>
-
-      <div class="status closed" id="status">Hangar Closed</div>
-      <div class="sub" id="subtitle">Opens in --:--:--</div>
-
-      <!-- Zone admin (cachée pour tous, visible seulement à l'URL avec #secret) -->
-      <div class="admin" id="admin">
-        <button class="btn" id="openNow">Open starts now</button>
-        <button class="btn" id="closedNow">Closed starts now</button>
-        <button class="btn" id="resetAnchor">Reset to global anchor</button>
-        <div class="note">Admin only (hidden to visitors). Anchor is saved for everyone.</div>
-      </div>
-
-      <div class="hint">Cycle: 3h Closed → 1h Open (auto). LEDs show remaining fraction of the current phase.</div>
-    </div>
-  </div>
-</div>
-
-<script>
-  /***************
-   * PARAMETERS
-   ***************/
-  const CLOSED_MIN = 180;             // 3h fermé
-  const OPEN_MIN   = 60;              // 1h ouvert
-  const DOTS_COUNT = 5;               // 5 pastilles
-  const ADMIN_SECRET = 'secret123';   // change ce code si tu veux (ex: 'moncodeperso')
-  // ⚓ Ancre globale par défaut (UTC) : début d'un cycle. Modifie si tu veux une date précise.
-  const GLOBAL_ANCHOR_ISO = '2025-09-01T00:00:00Z';
-  const MANUAL_OFFSET_SECONDS = 0;    // petit décalage global si besoin (+/- secondes)
-
-  const CYCLE_SEC  = (CLOSED_MIN + OPEN_MIN) * 60;
-  const CLOSED_SEC = CLOSED_MIN * 60;
-
-  // Élts UI
-  const elClock   = document.getElementById('clock');
-  const elDots    = document.getElementById('dots').children;
-  const elStatus  = document.getElementById('status');
-  const elSub     = document.getElementById('subtitle');
-  const elAdmin   = document.getElementById('admin');
-
-  // Persistance
-  const LS_KEY = 'eh_anchor_ms_v1';
-
-  const pad = n => String(n).padStart(2,'0');
-  const fmt = s => { s=Math.max(0,Math.floor(s)); return `${pad(Math.floor(s/3600))}:${pad(Math.floor((s%3600)/60))}:${pad(s%60)}`; };
-
-  // Base (ancre) = ce que voient tous les visiteurs (stockée et lue côté client)
-  function getGlobalAnchorMs(){
-    return Date.parse(GLOBAL_ANCHOR_ISO) + MANUAL_OFFSET_SECONDS*1000;
-  }
-  function getAnchorMs(){
-    const saved = localStorage.getItem(LS_KEY);
-    return (saved && /^\d+$/.test(saved)) ? Number(saved) : getGlobalAnchorMs();
-  }
-  function setAnchorMs(ms){
-    localStorage.setItem(LS_KEY, String(ms));
-  }
-  function resetAnchor(){
-    localStorage.removeItem(LS_KEY);
-  }
-
-  let anchorMs = getAnchorMs();
-
-  function update(){
-    const now = Date.now();
-    const elapsed = (((now - anchorMs)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
-    const isOpen  = elapsed >= CLOSED_SEC;
-    const remain  = isOpen ? (CYCLE_SEC - elapsed) : (CLOSED_SEC - elapsed);
-    const phaseSec= isOpen ? OPEN_MIN*60 : CLOSED_MIN*60;
-    const ratio   = remain / phaseSec;            // 1 → 0 sur la phase courante
-
-    // Clock + texte
-    elClock.textContent = fmt(remain);
-    if(isOpen){
-      elStatus.textContent = 'Hangar Open';
-      elStatus.className = 'status open';
-      elSub.textContent = 'Closes in ' + fmt(remain);
-    }else{
-      elStatus.textContent = 'Hangar Closed';
-      elStatus.className = 'status closed';
-      elSub.textContent = 'Opens in ' + fmt(remain);
-    }
-
-    // Pastilles : on allume en VERT le pourcentage restant, le reste en ROUGE
-    const greenCount = Math.max(0, Math.min(DOTS_COUNT, Math.round(ratio * DOTS_COUNT)));
-    for(let i=0;i<DOTS_COUNT;i++){
-      elDots[i].className = 'dot ' + (i < greenCount ? 'g' : 'r');
-    }
-  }
-
-  // --- Admin (caché pour tous) ---
-  const hash = (location.hash||'').replace(/^#/,'');
-  const isAdmin = hash === ADMIN_SECRET;
-  if(isAdmin){
-    elAdmin.style.display = 'flex';
-    document.getElementById('openNow').onclick = () => { anchorMs = Date.now() - CLOSED_SEC*1000; setAnchorMs(anchorMs); update(); };
-    document.getElementById('closedNow').onclick = () => { anchorMs = Date.now(); setAnchorMs(anchorMs); update(); };
-    document.getElementById('resetAnchor').onclick = () => { resetAnchor(); anchorMs = getAnchorMs(); update(); };
-  }
-
-  setInterval(update, 1000);
-  update();
-</script>
-</body>
-</html>
+      <div class="
