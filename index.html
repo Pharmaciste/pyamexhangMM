@@ -1,108 +1,167 @@
-// api/anchor.js
-export default async function handler(req, res) {
-  try {
-    const {
-      ADMIN_PASSWORD,
-      GITHUB_TOKEN,
-      GITHUB_OWNER,
-      GITHUB_REPO,
-      GITHUB_BRANCH = 'main',
-    } = process.env;
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Executive Hangar Timer</title>
+<style>
+  *{box-sizing:border-box} html,body{margin:0;padding:0}
+  body{font:16px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#fff;min-height:100vh;background:#0b0d12 url('https://images.unsplash.com/photo-1517817748496-62bc3047b9ff?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat fixed;}
+  .overlay{background:rgba(0,0,0,.45);min-height:100vh;}
+  .wrap{max-width:640px;margin:0 auto;padding:28px 18px 64px;}
+  .panel{background:rgba(10,12,18,.75);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px;text-align:center;box-shadow:0 8px 28px rgba(0,0,0,.35);backdrop-filter: blur(4px);}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .brand{font-weight:800;letter-spacing:.2px;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+  h1{margin:6px 0 10px;font-size:28px;font-weight:800;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+  .clock{font:38px/1.1 ui-monospace,Menlo,Consolas,monospace;margin:6px 0 10px}
+  .status{margin:8px 0 2px;font-weight:800}
+  .status.open{color:#22c55e} .status.closed{color:#ef4444}
+  .sub{opacity:.95}
+  .row{display:flex;gap:10px;justify-content:center;margin:10px 0 6px}
+  .dot{width:22px;height:22px;border-radius:50%;border:1px solid rgba(0,0,0,.6);box-shadow: inset 0 0 16px rgba(0,0,0,.5),0 0 10px rgba(0,0,0,.2);}
+  .g{background:#22c55e;box-shadow: inset 0 0 14px rgba(0,0,0,.5),0 0 14px rgba(34,197,94,.4)}
+  .r{background:#ef4444;box-shadow: inset 0 0 14px rgba(0,0,0,.5),0 0 14px rgba(239,68,68,.35)}
+  .next-times{margin-top:12px;font-size:13px;opacity:.95}
+  .meta{margin-top:8px;font-size:12px;opacity:.85}
+  .admin{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+  .admin-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center}
+  .btn{padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#111827;color:#fff;cursor:pointer}
+  .btn:hover{border-color:#3f3f46}
+  .admin input[type="time"], .admin input[type="password"]{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff}
+  .warn{color:#fbbf24;font-size:12px}
+</style>
+</head>
+<body>
+<div class="overlay">
+  <div class="wrap">
+    <div class="panel">
+      <header><div class="brand">Contested Zone Timers</div></header>
 
-    if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
-      res.status(500).send('Server not configured');
-      return;
-    }
+      <h1>Executive Hangar Timer</h1>
+      <div class="clock" id="clock">--:--:--</div>
 
-    const ghHeaders = {
-      'Authorization': `token ${GITHUB_TOKEN}`,
-      'Accept': 'application/vnd.github+json',
-      'User-Agent': 'cztimer-site',
-    };
-    const filePath = 'anchor.json';
-    const ghContentUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}?ref=${GITHUB_BRANCH}`;
+      <div class="row" id="dots">
+        <div class="dot g"></div><div class="dot g"></div><div class="dot g"></div><div class="dot g"></div><div class="dot g"></div>
+      </div>
 
-    async function readCurrent() {
-      const r = await fetch(ghContentUrl, { headers: ghHeaders });
-      if (r.status === 404) {
-        return { cfg: { anchor_iso: '2025-09-07T16:53:00Z', manual_offset_seconds: 0, paused: false }, sha: null };
-      }
-      if (!r.ok) throw new Error('GitHub read failed: ' + r.status);
-      const j = await r.json();
-      const content = Buffer.from(j.content, 'base64').toString('utf8');
-      return { cfg: JSON.parse(content), sha: j.sha };
-    }
+      <div class="status closed" id="status">Hangar Closed</div>
+      <div class="sub" id="subtitle">Time until next change: --:--:--</div>
 
-    async function writeConfig(newCfg, prevSha) {
-      const body = {
-        message: `Update anchor.json ${new Date().toISOString()}`,
-        content: Buffer.from(JSON.stringify(newCfg, null, 2)).toString('base64'),
-        branch: GITHUB_BRANCH,
-      };
-      if (prevSha) body.sha = prevSha;
-      const r = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`, {
-        method: 'PUT',
-        headers: { ...ghHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!r.ok) {
-        const t = await r.text().catch(()=> '');
-        throw new Error('GitHub write failed: ' + r.status + ' ' + t);
-      }
-      return newCfg;
-    }
+      <div class="next-times" id="nextTimes">Next close: — • Next open: —</div>
+      <div class="meta" id="modeMeta">Config globale chargée.</div>
 
-    if (req.method === 'GET') {
-      const { cfg } = await readCurrent();
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.setHeader('Cache-Control', 'no-store');
-      res.status(200).send(JSON.stringify(cfg));
-      return;
-    }
+      <!-- ADMIN (tout se fait ici) -->
+      <div class="admin">
+        <div class="admin-row">
+          <label for="openTime">Dernière ouverture (HH:MM) :</label>
+          <input type="time" id="openTime" step="60" />
+          <label for="pwd">Mot de passe admin :</label>
+          <input type="password" id="pwd" placeholder="******" />
+        </div>
+        <div class="admin-row">
+          <button class="btn" id="publishGlobal">Mettre à jour GLOBAL (ouvre à HH:MM)</button>
+          <button class="btn" id="togglePauseGlobal">Pause/Reprendre GLOBAL</button>
+          <button class="btn" id="reload">Recharger la config</button>
+        </div>
+        <div class="meta warn">Entre l’heure de la <b>dernière ouverture</b> vue en jeu (heure locale). Le site recalcule pour tout le monde.</div>
+      </div>
+    </div>
+  </div>
+</div>
 
-    if (req.method === 'POST') {
-      const body = await readBody(req);
-      if (!body || body.password !== ADMIN_PASSWORD) {
-        res.status(401).send('Unauthorized');
-        return;
-      }
+<script>
+  // ----- Réglages du cycle -----
+  const OPEN_MIN=60, CLOSED_MIN=120, DOTS_COUNT=5;
+  const CYCLE_SEC=(OPEN_MIN+CLOSED_MIN)*60, OPEN_SEC=OPEN_MIN*60, CLOSED_SEC=CLOSED_MIN*60;
 
-      const { anchor_iso, manual_offset_seconds = 0, paused = false } = body;
-      if (!anchor_iso || Number.isNaN(Date.parse(anchor_iso))) {
-        res.status(400).send('Invalid anchor_iso');
-        return;
-      }
-      if (typeof manual_offset_seconds !== 'number') {
-        res.status(400).send('manual_offset_seconds must be number');
-        return;
-      }
-      if (typeof paused !== 'boolean') {
-        res.status(400).send('paused must be boolean');
-        return;
-      }
+  // UI
+  const elClock=document.getElementById('clock'), elStatus=document.getElementById('status'),
+        elSub=document.getElementById('subtitle'), elDots=document.getElementById('dots').children,
+        elNext=document.getElementById('nextTimes'), elMode=document.getElementById('modeMeta');
+  const inputTime=document.getElementById('openTime'), inputPwd=document.getElementById('pwd');
+  const btnPublish=document.getElementById('publishGlobal'), btnPause=document.getElementById('togglePauseGlobal'),
+        btnReload=document.getElementById('reload');
 
-      const { sha } = await readCurrent();
-      const saved = await writeConfig({ anchor_iso, manual_offset_seconds, paused }, sha);
+  // État global (vient de l’API)
+  let cfg={anchor_iso:'2025-09-07T16:53:00Z', manual_offset_seconds:0, paused:false};
 
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.status(200).send(JSON.stringify(saved));
-      return;
-    }
+  // Helpers
+  const pad=n=>String(n).padStart(2,'0');
+  const fmt=s=>{s=Math.max(0,Math.floor(s)); return `${pad(Math.floor(s/3600))}:${pad(Math.floor((s%3600)/60))}:${pad(s%60)}`;};
+  const pretty=ms=>new Date(ms).toLocaleString(undefined,{dateStyle:'short',timeStyle:'short'});
+  const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
+  const anchorMs=()=>Date.parse(cfg.anchor_iso)+(cfg.manual_offset_seconds||0)*1000;
 
-    res.setHeader('Allow', 'GET, POST');
-    res.status(405).send('Method Not Allowed');
-  } catch (e) {
-    res.status(500).send(String(e?.message || e));
+  // Timer + LEDs
+  function update(){
+    const now=Date.now();
+    const elapsed=(((now-anchorMs())/1000)%CYCLE_SEC+CYCLE_SEC)%CYCLE_SEC;
+    const isOpen=elapsed<OPEN_SEC;
+    const remain=isOpen?(OPEN_SEC-elapsed):(CYCLE_SEC-elapsed);
+
+    elClock.textContent=fmt(remain);
+    elStatus.className='status '+(isOpen?'open':'closed');
+    elStatus.textContent='Hangar '+(isOpen?'Open':'Closed')+(cfg.paused?' (Paused)':'');
+    elSub.textContent='Time until next change ('+(isOpen?'Close':'Open')+'): '+fmt(remain);
+
+    const phaseSec=isOpen?OPEN_SEC:CLOSED_SEC;
+    const progress=remain/phaseSec; // 1→0
+    let greenCount=isOpen?Math.ceil(progress*DOTS_COUNT):DOTS_COUNT-Math.ceil(progress*DOTS_COUNT);
+    greenCount=Math.max(0,Math.min(DOTS_COUNT,greenCount));
+    for(let i=0;i<DOTS_COUNT;i++){ elDots[i].className='dot '+(i<greenCount?'g':'r'); }
+
+    const nextClose=nextAfter(anchorMs()+OPEN_SEC*1000,CYCLE_SEC*1000,now);
+    const nextOpen =nextAfter(anchorMs(),CYCLE_SEC*1000,now);
+    elNext.textContent=`Next close: ${pretty(nextClose)} • Next open: ${pretty(nextOpen)}`;
   }
-}
 
-function readBody(req) {
-  return new Promise((resolve) => {
-    let data = '';
-    req.on('data', (c) => (data += c));
-    req.on('end', () => {
-      try { resolve(JSON.parse(data || '{}')); }
-      catch { resolve(null); }
-    });
-  });
-}
+  // Charger la config depuis l’API
+  async function loadConfig(){
+    const r=await fetch('/api/anchor?ts='+Date.now(),{cache:'no-store'});
+    if(!r.ok){ elMode.textContent='Erreur API: '+r.status; return; }
+    cfg=await r.json();
+    elMode.textContent='Config globale chargée.';
+    const d=new Date(); document.getElementById('openTime').value=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    update();
+  }
+
+  // Transformer HH:MM en dernière occurrence (aujourd’hui si passée, sinon hier)
+  function lastOccurrenceIso(hh,mm){
+    const now=new Date(); const d=new Date(now); d.setHours(hh,mm,0,0);
+    if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1);
+    // ISO UTC propre (sans ms)
+    return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().replace('.000Z','Z');
+  }
+
+  // Publier nouvel horaire global
+  btnPublish.onclick=async ()=>{
+    const val=inputTime.value.trim(), pwd=inputPwd.value;
+    if(!val) return alert('Indique HH:MM');
+    if(!pwd) return alert('Mot de passe requis');
+    const [hh,mm]=val.split(':').map(Number);
+    if(Number.isNaN(hh)||Number.isNaN(mm)) return alert('Heure invalide');
+
+    const iso=lastOccurrenceIso(hh,mm);
+    const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({password:pwd,anchor_iso:iso,manual_offset_seconds:0,paused:false})});
+    if(!r.ok){ const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
+    cfg=await r.json(); inputPwd.value=''; alert('✅ Mise à jour globale enregistrée.'); update();
+  };
+
+  // Pause/Reprendre global
+  btnPause.onclick=async ()=>{
+    const pwd=inputPwd.value; if(!pwd) return alert('Mot de passe requis');
+    const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({password:pwd,anchor_iso:cfg.anchor_iso,manual_offset_seconds:cfg.manual_offset_seconds||0,paused:!cfg.paused})});
+    if(!r.ok){ const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
+    cfg=await r.json(); inputPwd.value=''; update();
+  };
+
+  // Recharger
+  btnReload.onclick=loadConfig;
+
+  setInterval(update,1000);
+  loadConfig();
+</script>
+</body>
+</html>
