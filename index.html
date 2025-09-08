@@ -50,8 +50,11 @@
   .pp-cta:hover{border-color:#334155}
   .privacy{display:none; margin-top:16px}
   .privacy .box{background:var(--panel); border:1px solid var(--panel-border); border-radius:16px; padding:16px; box-shadow:0 12px 30px var(--shadow)}
+  .privacy h2{margin:0 0 10px; font-size:20px; font-weight:900}
+  .privacy h3{margin:16px 0 6px; font-size:16px; font-weight:800}
+  .privacy p, .privacy li{color:#dbeafe}
 
-  /* Admin (caché derrière mot de passe) */
+  /* Admin (protégé) */
   .btn{padding:9px 12px; border-radius:12px; border:1px solid var(--panel-border); background:#0f172a; color:#fff; cursor:pointer}
   .btn.primary{background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111; border-color:transparent; font-weight:900}
   .admin{display:none; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; margin-top:16px}
@@ -93,7 +96,7 @@
       <div class="sub" id="subtitle">Prochaine transition dans --:--:--</div>
 
       <div class="next" id="nextTimes">Prochaine fermeture : — • Prochaine ouverture : —</div>
-      <div class="meta" id="modeMeta">Ancre initiale = <b>prochaine ouverture à 16:28 (heure locale)</b>. Modifiable via Admin.</div>
+      <div class="meta" id="modeMeta">Ancre initiale : <b>dernière ouverture à 21:55 (heure locale)</b>. Modifiable via Admin.</div>
 
       <!-- Admin (après login) -->
       <div class="admin" id="adminPanel">
@@ -113,7 +116,24 @@
     <section class="privacy" id="privacy" aria-hidden="true">
       <div class="box">
         <h2>Privacy Policy</h2>
-        <p>Nous ne collectons pas de données personnelles. Préférences stockées en Local Storage si l’API n’est pas disponible.</p>
+        <p><em>Effective Date: September 8, 2025</em></p>
+
+        <p>We do <strong>not</strong> collect, sell, or share personal data. Timer preferences may be stored in your browser’s <strong>Local Storage</strong> for convenience. This data stays on your device and is never transmitted to our servers unless you use the Admin to push a global update.</p>
+
+        <h3>Cookies &amp; Tracking</h3>
+        <p>No cookies currently. If ads are enabled later (e.g., Google AdSense), third parties may set cookies you can control in your browser.</p>
+
+        <h3>Your Rights</h3>
+        <p>Depending on your location (e.g., GDPR / CCPA), you may have rights such as access, correction, deletion. As we do not collect personal data, these mainly relate to cookie preferences if enabled in the future.</p>
+
+        <h3>Data Retention</h3>
+        <p>We do not maintain user profiles or store personal data. Local Storage data remains on your device until you clear it.</p>
+
+        <h3>Children’s Privacy</h3>
+        <p>This site is for a general audience and does not knowingly collect information from children under 13 (or higher local threshold).</p>
+
+        <h3>Changes</h3>
+        <p>We may update this Policy from time to time. We will post changes here with a new Effective Date.</p>
       </div>
     </section>
 
@@ -178,17 +198,17 @@
   const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
 
   /* ===== LEDs ===== */
-  // Fermé : 0→5 verts, ~24 min/LED (la 5ème juste avant l’ouverture)
+  // Fermé : 0→5 verts (~24 min/LED), la 5e juste avant l’ouverture
   function greenCountClosed(remainSec){
     const seg = CLOSED_SEC / DOTS;                 // ~1440.2 s
     const closedElapsed = CLOSED_SEC - remainSec;  // progresse de 0 -> CLOSED_SEC
-    let cnt = Math.floor(closedElapsed / seg);     // 0..5 (5 au tout dernier instant)
+    let cnt = Math.floor(closedElapsed / seg);     // 0..5
     return Math.max(0, Math.min(DOTS, cnt));
   }
   // Ouvert : 5→0 verts (12 min/LED), puis 5 min “black” (0 LED mais ouvert)
   function greenCountOpen(remainSec){
     if (remainSec <= 5*60) return 0;               // “black” final
-    const eff = Math.min(60*60, remainSec - 5*60); // secondes LED-actives
+    const eff = Math.min(60*60, remainSec - 5*60); // 60 min max de LEDs
     return Math.max(0, Math.min(DOTS, Math.ceil(eff / (12*60))));
   }
   function updateLeds(isOpen, remain){
@@ -228,15 +248,15 @@
     elNext.textContent = `Prochaine fermeture : ${pretty(nClose)} • Prochaine ouverture : ${pretty(nOpen)}`;
   }
 
-  /* ===== Initialiser l’ancre sur la PROCHAINE ouverture à 16:28 (heure locale) ===== */
-  function initAnchorToNext1628(){
+  /* ===== Initialiser l’ancre sur la DERNIÈRE ouverture à 21:55 (locale) ===== */
+  function initAnchorToLast2155(){
     const now=new Date();
-    const next=new Date(now);
-    next.setHours(16,28,0,0);
-    if(next.getTime() <= now.getTime()) next.setDate(next.getDate()+1); // si 16:28 est passé, on prend demain
-    cfg.anchor_iso = toISO(next.getTime());  // l’ancre est un instant d’OUVERTURE
+    const last=new Date(now);
+    last.setHours(21,55,0,0);
+    if(last.getTime() >= now.getTime()){ last.setDate(last.getDate()-1); } // “hier 21:55” si on est avant 21:55
+    cfg.anchor_iso = toISO(last.getTime());  // l’ancre est un instant d’OUVERTURE
     cfg.manual_offset_seconds = 0;
-    elMode.textContent = 'Ancre initiale : prochaine ouverture à 16:28 locale ('+ pretty(next.getTime()) +')';
+    elMode.textContent = 'Ancre initiale : dernière ouverture à 21:55 locale ('+ pretty(last.getTime()) +')';
   }
 
   /* ===== Admin (login caché) ===== */
@@ -254,7 +274,7 @@
     const [hh,mm]=hhmm.split(':').map(Number);
     const now=new Date();
     const d=new Date(now); d.setHours(hh,mm,0,0);
-    if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1); // si futur -> hier (dernière ouverture passée)
+    if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1); // si futur -> dernière occurrence
     return toISO(d.getTime());
   }
 
@@ -314,10 +334,10 @@
   /* ===== Tick & Go ===== */
   setInterval(()=>{ if(!cfg.paused) render(); },1000);
 
-  // Ancre = PROCHAINE ouverture à 16:28 locale
-  initAnchorToNext1628();
-  // Préremplir l’input admin (utile si tu veux pousser une “dernière ouverture” précise)
-  inputTime.value='16:28';
+  // Ancre = DERNIÈRE ouverture à 21:55 locale (i.e., “hier 21:55” si on est avant 21:55 maintenant)
+  initAnchorToLast2155();
+  // Préremplir l’input admin à 21:55 pour les ajustements
+  inputTime.value='21:55';
   render();
 </script>
 </body>
