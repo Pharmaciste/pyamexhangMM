@@ -133,11 +133,11 @@
 
     <!-- Bouton d'accès rapide à la Privacy Policy -->
     <div class="pp-cta-wrap">
-      <a href="#privacy" id="ppBtn" class="pp-cta">Privacy Policy</a>
+      <a href="#privacy" id="ppBtn" class="pp-cta" aria-expanded="false" aria-controls="privacy">Privacy Policy</a>
     </div>
 
     <!-- ====== PRIVACY POLICY (Updated) ====== -->
-    <section class="privacy" id="privacy">
+    <section class="privacy" id="privacy" aria-hidden="true">
       <div class="box">
         <h2>Privacy Policy</h2>
         <p><em>Effective Date: September 8, 2025</em></p>
@@ -294,13 +294,29 @@
 
   document.getElementById('reload').onclick= loadCfg;
 
-  /* ===== Privacy: bouton qui affiche & scroll ===== */
-  function openPrivacy(){
-    ppSection.style.display='block';
-    ppSection.scrollIntoView({behavior:'smooth'});
+  /* ===== Privacy: bouton toggle (ouvre/ferme) ===== */
+  function setPrivacyVisibility(show){
+    ppSection.style.display = show ? 'block' : 'none';
+    ppSection.setAttribute('aria-hidden', String(!show));
+    ppBtn.setAttribute('aria-expanded', String(show));
+    if (show) ppSection.scrollIntoView({behavior:'smooth'});
   }
-  ppBtn.addEventListener('click', (e)=>{ e.preventDefault(); openPrivacy(); });
-  if (location.hash === '#privacy') { ppSection.style.display='block'; }
+  function togglePrivacy(e){
+    e && e.preventDefault();
+    const showing = ppSection.style.display === 'block';
+    setPrivacyVisibility(!showing);
+    // Optionnel : synchroniser le hash (#privacy) uniquement quand ouvert
+    if (!showing) { history.replaceState(null, '', '#privacy'); }
+    else { history.replaceState(null, '', ' '); }
+  }
+  ppBtn.addEventListener('click', togglePrivacy);
+
+  // Si l'URL contient #privacy au chargement, on ouvre; sinon on laisse fermé.
+  if (location.hash === '#privacy') {
+    setPrivacyVisibility(true);
+  } else {
+    setPrivacyVisibility(false);
+  }
 
   /* Go */
   setInterval(render,1000);
