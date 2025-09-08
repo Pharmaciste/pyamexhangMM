@@ -148,4 +148,178 @@
   const elSub=document.getElementById('subtitle');
   const leds=document.getElementById('leds').children;
   const elNext=document.getElementById('nextTimes');
-  const elMode=document.getEle
+  const elMode=document.getElementById('modeMeta');
+  const elLedInfo=document.getElementById('ledInfo');
+
+  const adminPanel=document.getElementById('adminPanel');
+  const inputTime=document.getElementById('openTime');
+  const btnPublish=document.getElementById('publishGlobal');
+  const btnPause=document.getElementById('togglePauseGlobal');
+  const btnReload=document.getElementById('reload');
+  const btnLogout=document.getElementById('logout');
+
+  const modal=document.getElementById('modal');
+  const pwdInput=document.getElementById('pwd');
+  const doLoginBtn=document.getElementById('doLogin');
+  const closeModal=document.getElementById('closeModal');
+
+  const ppBtn=document.getElementById('ppBtn');
+  const ppSection=document.getElementById('privacy');
+
+  /* ===== Etat global ===== */
+  let cfg={anchor_iso:null, manual_offset_seconds:0, paused:false};
+  let isAdmin=false, adminPwd=null;
+
+  /* ===== Utils ===== */
+  const pad=n=>String(n).padStart(2,'0');
+  const fmt=s=>{s=Math.max(0,Math.floor(s)); return `${pad(s/3600|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`;};
+  const pretty=ms=>new Date(ms).toLocaleString('fr-FR',{dateStyle:'short', timeStyle:'short'});
+  const toISO=ms=>new Date(ms - new Date().getTimezoneOffset()*60000).toISOString().replace('.000Z','Z');
+  const anchorMs=()=>Date.parse(cfg.anchor_iso)+(cfg.manual_offset_seconds||0)*1000;
+  const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
+
+  /* ===== LED logic ===== */
+  function greenCountOpen(remainSec){
+    // Pendant l’ouverture : 5→0 LED (12 min chacune), puis 5 min “black” (0 LED)
+    if (remainSec <= 5*60) return 0;
+    const eff = Math.min(60*60, remainSec - 5*60);
+    return Math.max(0, Math.min(DOTS, Math.ceil(eff / (12*60))));
+  }
+  function greenCountClosed(remainSec){
+    // Fermé : 0→5 LED (≈24 min chacune)
+    const seg = CLOSED_SEC / DOTS;
+    let cnt = DOTS - Math.ceil(remainSec / seg);
+    return Math.max(0, Math.min(DOTS, cnt));
+  }
+  function updateLeds(isOpen, remain){
+    const green = isOpen ? greenCountOpen(remain) : greenCountClosed(remain);
+    for(let i=0;i<DOTS;i++) leds[i].className='led '+(i<green?'g':'r');
+    elLedInfo.textContent = isOpen
+      ? 'Ouvert : 1 LED = 12 min • dernières 5 min sans LED'
+      : 'Fermé : 1 LED ≈ 24 min';
+  }
+
+  /* ===== Rendu ===== */
+  function render(){
+    if(!cfg.anchor_iso){
+      elClock.textContent='--:--:--';
+      elStatus.className='status closed';
+      elStatus.textContent='Initialisation…';
+      elSub.textContent='Aucune ancre définie';
+      elNext.textContent='—';
+      return;
+    }
+    const now=Date.now();
+    const elapsed=(((now-anchorMs())/1000)%CYCLE_SEC+CYCLE_SEC)%CYCLE_SEC;
+    const isOpen = elapsed < OPEN_SEC;
+    const phaseSec = isOpen ? OPEN_SEC : CLOSED_SEC;
+    const phaseElapsed = isOpen ? elapsed : (elapsed-OPEN_SEC);
+    const remain = phaseSec - phaseElapsed;
+
+    elClock.textContent = fmt(remain);
+    elStatus.className='status '+(isOpen?'open':'closed');
+    elStatus.textContent = 'Hangar '+(isOpen?'Open':'Closed') + (cfg.paused?' (Paused)':'');
+    elSub.textContent = 'Prochaine transition ('+(isOpen?'fermeture':'ouverture')+') dans '+fmt(remain);
+
+    updateLeds(isOpen, remain);
+
+    const nClose=nextAfter(anchorMs()+OPEN_SEC*1000, CYCLE_SEC*1000, now);
+    const nOpen =nextAfter(anchorMs(),                CYCLE_SEC*1000, now);
+    elNext.textContent = `Prochaine fermeture : ${pretty(nClose)} • Prochaine ouverture : ${pretty(nOpen)}`;
+  }
+
+  /* ===== Initialiser l’ancre sur la PROCHAINE ouverture à 16:28 (heure locale) ===== */
+  function initAnchorToNext1628(){
+    const now=new Date();
+    const next=new Date(now);
+    next.setHours(16,28,0,0);
+    if(next.getTime() <= now.getTime()) next.setDate(next.getDate()+1); // si 16:28 est déjà passé, on prend demain
+    // On pose l’ancre (= instant d’ouverture) à cette prochaine 16:28 locale
+    cfg.anchor_iso = toISO(next.getTime());
+    cfg.manual_offset_seconds = 0;
+    elMode.textContent = 'Ancre initiale : prochaine ouverture à 16:28 (locale) -> '+pretty(next.getTime());
+  }
+
+  /* ===== Admin session (cachée, mot de passe) ===== */
+  function setAdminUI(v){ isAdmin=v; adminPanel.style.display=v?'flex':'none'; if(!v) adminPwd=null; }
+  const secretLogo = document.getElementById('secretLogo');
+  secretLogo.addEventListener('dblclick', ()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); });
+  document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='a'){ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } });
+  if (location.hash === '#admin'){ setTimeout(()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }, 50); }
+
+  doLoginBtn.onclick= ()=>{ adminPwd=pwdInput.value.trim(); if(!adminPwd){ alert('Entre le mot de passe'); return; } setAdminUI(true); modal.style.display='none'; };
+  closeModal.onclick=()=>{ modal.style.display='none'; };
+  btnLogout.onclick=()=> setAdminUI(false);
+
+  function computeAnchorIsoFromHHMM(hhmm){
+    const [hh,mm]=hhmm.split(':').map(Number);
+    const now=new Date();
+    const d=new Date(now); d.setHours(hh,mm,0,0);
+    if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1); // si futur → on prend hier
+    return toISO(d.getTime());
+  }
+
+  btnPublish.onclick= async ()=>{
+    if(!isAdmin || !adminPwd){ modal.style.display='flex'; return; }
+    const val=inputTime.value.trim(); if(!val) return alert('Indique HH:MM');
+    const iso=computeAnchorIsoFromHHMM(val);
+    try{
+      const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:adminPwd,anchor_iso:iso,manual_offset_seconds:0,paused:false})});
+      if(!r.ok){ if(r.status===401){ setAdminUI(false); return alert('Mot de passe incorrect'); } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
+      cfg=await r.json();
+      alert('✅ Mise à jour globale enregistrée');
+      elMode.textContent='Config globale chargée. Dernière MAJ : '+pretty(Date.parse(cfg.anchor_iso));
+      render();
+    }catch(err){ alert('Erreur réseau'); console.error(err); }
+  };
+
+  btnPause.onclick= async ()=>{
+    if(!isAdmin || !adminPwd){ modal.style.display='flex'; return; }
+    try{
+      const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:adminPwd,anchor_iso:cfg.anchor_iso,manual_offset_seconds:cfg.manual_offset_seconds||0,paused:!cfg.paused})});
+      if(!r.ok){ if(r.status===401){ setAdminUI(false); return alert('Mot de passe incorrect'); } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
+      cfg=await r.json(); render();
+    }catch(err){ alert('Erreur réseau'); console.error(err); }
+  };
+
+  btnReload.onclick= async ()=>{
+    try{
+      const r=await fetch('/api/anchor?ts='+Date.now(),{cache:'no-store'});
+      if(!r.ok) throw new Error(r.status);
+      const js=await r.json();
+      cfg.anchor_iso=js.anchor_iso||cfg.anchor_iso;
+      cfg.manual_offset_seconds=js.manual_offset_seconds||0;
+      cfg.paused=!!js.paused;
+      elMode.textContent='Config globale chargée. Dernière MAJ : '+pretty(Date.parse(cfg.anchor_iso));
+      render();
+    }catch{ alert('Impossible de recharger la config'); }
+  };
+
+  /* ===== Privacy toggle ===== */
+  function setPrivacyVisibility(show){
+    ppSection.style.display = show ? 'block' : 'none';
+    ppSection.setAttribute('aria-hidden', String(!show));
+    ppBtn.setAttribute('aria-expanded', String(show));
+    if (show) ppSection.scrollIntoView({behavior:'smooth'});
+  }
+  function togglePrivacy(e){
+    e && e.preventDefault();
+    const showing = ppSection.style.display === 'block';
+    setPrivacyVisibility(!showing);
+    if (!showing) { history.replaceState(null, '', '#privacy'); }
+    else { history.replaceState(null, '', ' '); }
+  }
+  ppBtn.addEventListener('click', togglePrivacy);
+  if (location.hash === '#privacy') setPrivacyVisibility(true);
+
+  /* ===== Tick ===== */
+  setInterval(()=>{ if(!cfg.paused) render(); },1000);
+
+  /* Go : ancre = PROCHAINE ouverture à 16:28 locale */
+  initAnchorToNext1628();
+  // Préremplir l’input admin à 16:28 pour les ajustements manuels
+  document.getElementById('openTime').value = '16:28';
+  render();
+</script>
+</body>
+</html>
