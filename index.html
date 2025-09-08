@@ -5,14 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Executive Hangar Timer</title>
 <style>
+  /* --- Base UI --- */
   *{box-sizing:border-box} html,body{margin:0;padding:0}
   body{
     font:16px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-    color:#fff; min-height:100vh;
+    color:#fff; min-height:100vh; 
     background:#0b0d12 url('https://images.unsplash.com/photo-1517817748496-62bc3047b9ff?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat fixed;
   }
   .overlay{background:rgba(0,0,0,.45); min-height:100vh;}
-  .wrap{max-width:640px; margin:0 auto; padding:28px 18px 64px;}
+  .wrap{max-width:560px; margin:0 auto; padding:28px 18px 48px;}
   .panel{
     background:rgba(10,12,18,.75);
     border:1px solid rgba(255,255,255,.08);
@@ -25,15 +26,12 @@
   .login-btn{padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#111827;color:#fff;cursor:pointer}
   .login-btn:hover{border-color:#3f3f46}
 
-  .banner{margin-bottom:10px; padding:8px 12px; border-radius:10px; background:rgba(34,197,94,.1); border:1px solid rgba(34,197,94,.25); color:#a7f3d0; font-weight:600}
-  .banner small{opacity:.9; font-weight:500}
-
   h1{margin:6px 0 10px; font-size:28px; font-weight:800; text-shadow:0 1px 2px rgba(0,0,0,.4)}
-  .clock{font:38px/1.1 ui-monospace,Menlo,Consolas,monospace; margin:6px 0 10px}
+  .clock{font:34px/1.1 ui-monospace,Menlo,Consolas,monospace; margin:6px 0 10px}
   .status{margin:8px 0 2px; font-weight:800}
   .status.open{color:#22c55e}
   .status.closed{color:#ef4444}
-  .sub{opacity:.95}
+  .sub{opacity:.9}
   .row{display:flex; gap:10px; justify-content:center; margin:10px 0 6px}
   .dot{
     width:22px; height:22px; border-radius:50%;
@@ -43,34 +41,31 @@
   .g{ background:#22c55e; box-shadow: inset 0 0 14px rgba(0,0,0,.5), 0 0 14px rgba(34,197,94,.4) }
   .r{ background:#ef4444; box-shadow: inset 0 0 14px rgba(0,0,0,.5), 0 0 14px rgba(239,68,68,.35) }
 
-  .next-times{margin-top:12px; font-size:13px; opacity:.95}
-  .meta{margin-top:8px; font-size:12px; opacity:.85}
-
-  /* Admin simplifié */
+  /* --- Admin (masqué tant qu'on n'est pas connecté) --- */
   .admin{display:none; margin-top:14px; gap:8px; flex-wrap:wrap; justify-content:center}
-  .row-admin{display:flex; gap:8px; flex-wrap:wrap; justify-content:center; align-items:center}
   .btn{padding:8px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:#111827; color:#fff; cursor:pointer}
   .btn:hover{border-color:#3f3f46}
-  .admin input[type="datetime-local"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
-  .note{opacity:.85; font-size:12px; margin-top:6px}
+  .note{opacity:.8; font-size:12px; margin-top:8px}
+  .hint{opacity:.7; font-size:12px; text-align:center; margin-top:12px}
 
-  /* Modal login */
+  /* --- Modal login --- */
   .modal{position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; padding:20px}
   .modal .box{background:#0f1220; border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:16px; width:100%; max-width:360px}
   .modal h3{margin:0 0 10px; font-size:18px}
   .field{display:flex; gap:8px}
   .field input{flex:1; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
   .actions{display:flex; gap:8px; margin-top:10px; justify-content:flex-end}
+
+  /* --- Admin form extra --- */
+  .admin-row{display:flex; gap:8px; flex-wrap:wrap; justify-content:center; align-items:center; margin-top:6px}
+  .admin-row input[type="datetime-local"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
+  .next-times{margin-top:10px; font-size:13px; opacity:.9}
 </style>
 </head>
 <body>
 <div class="overlay">
   <div class="wrap">
     <div class="panel">
-      <div class="banner">
-        Updated for SC <strong id="patchTag">4.3.0-LIVE</strong> <small id="patchNote">(Hotfix 10188864)</small>
-      </div>
-
       <header>
         <div class="brand">Contested Zone Timers</div>
         <button class="login-btn" id="loginBtn">Admin Login</button>
@@ -81,31 +76,31 @@
       <div class="clock" id="clock">--:--:--</div>
 
       <div class="row" id="dots">
+        <!-- 5 pastilles -->
         <div class="dot g"></div><div class="dot g"></div><div class="dot g"></div><div class="dot g"></div><div class="dot g"></div>
       </div>
 
       <div class="status closed" id="status">Hangar Closed</div>
-      <div class="sub" id="subtitle">Time until next change: --:--:--</div>
+      <div class="sub" id="subtitle">Opens in --:--:--</div>
 
-      <div class="next-times" id="nextTimes">Next close: — • Next open: —</div>
-      <div class="meta" id="modeMeta">Mode: <strong>Global</strong> (anchor.json)</div>
+      <div class="next-times" id="nextTimes">Prochaine fermeture : — • Prochaine ouverture : —</div>
 
-      <!-- Admin ultra simple -->
+      <!-- Zone admin (affichée seulement après connexion) -->
       <div class="admin" id="admin">
-        <div class="row-admin">
+        <div class="admin-row">
           <input type="datetime-local" id="openAt" />
-          <button class="btn" id="setLocal">Tester (local)</button>
-          <button class="btn" id="togglePause">Pause</button>
+          <button class="btn" id="setFromPicker">Set opening at chosen time</button>
         </div>
-        <div class="row-admin">
-          <button class="btn" id="downloadAnchor">Télécharger anchor.json</button>
-          <button class="btn" id="copyAnchor">Copier anchor.json</button>
-          <button class="btn" id="reloadGlobal">Recharger ancre globale</button>
+        <div class="admin-row">
+          <button class="btn" id="openNow">Open starts now</button>
+          <button class="btn" id="closedNow">Closed starts now</button>
+          <button class="btn" id="resetAnchor">Reset to global anchor</button>
           <button class="btn" id="logout">Logout</button>
         </div>
-        <div class="note">Choisis l’heure exacte de la <b>dernière ouverture</b>. “Tester (local)” met à jour immédiatement.  
-        Pour publier pour tout le monde : utilise <b>Télécharger/Copier anchor.json</b> puis ajoute/édite ce fichier à la racine du dépôt.</div>
+        <div class="note">Admin only. Pick the last game opening time; the site will cycle automatically (1h open + 2h closed).</div>
       </div>
+
+      <div class="hint">Cycle : 1h Open → 2h Closed (auto). LEDs step one-by-one (vert→rouge quand ouvert, rouge→vert quand fermé).</div>
     </div>
   </div>
 </div>
@@ -129,24 +124,18 @@
   /***************
    * PARAMÈTRES
    ***************/
-  // Durées: 1h OUVERT + 2h FERMÉ
-  const OPEN_MIN   = 60;
-  const CLOSED_MIN = 120;
-  const DOTS_COUNT = 5;
+  const OPEN_MIN   = 60;              // 1 h ouvert
+  const CLOSED_MIN = 120;             // 2 h fermé
+  const DOTS_COUNT = 5;               // 5 pastilles
 
-  // Ancre par défaut (au cas où anchor.json n'existe pas encore)
-  const DEFAULT_GLOBAL_ANCHOR_ISO = '2025-09-07T16:53:00Z'; // 7 sept. 2025 18:53 Paris = 16:53 UTC
-  const DEFAULT_MANUAL_OFFSET_SECONDS = 0;
+  // ⚓ Ancre globale par défaut (UTC) = 7 sept. 2025 18:53 (Paris) = 16:53 UTC
+  const GLOBAL_ANCHOR_ISO = '2025-09-07T16:53:00Z';
+  const MANUAL_OFFSET_SECONDS = 0;    // micro-ajustement global (+/- secondes) si besoin
 
   // Connexion simple (client-side)
-  const ADMIN_PASSWORD = 'admin123'; // ← CHANGE MOI !
+  const ADMIN_PASSWORD = 'admin123';  // ← CHANGE MOI !
   const LS_IS_ADMIN = 'eh_is_admin_v1';
-  const LS_ANCHOR   = 'eh_anchor_ms_v1';  // override local pour TESTER
-  const LS_PAUSED   = 'eh_paused_v1';     // pause locale
-
-  // Patch banner (modifiable sans toucher au reste)
-  document.getElementById('patchTag').textContent  = '4.3.0-LIVE';
-  document.getElementById('patchNote').textContent = '(Hotfix 10188864)';
+  const LS_ANCHOR   = 'eh_anchor_ms_v1';
 
   const CYCLE_SEC  = (OPEN_MIN + CLOSED_MIN) * 60;  // 3 h
   const OPEN_SEC   = OPEN_MIN * 60;
@@ -159,9 +148,7 @@
   const elDots    = document.getElementById('dots').children;
   const elAdmin   = document.getElementById('admin');
   const elNext    = document.getElementById('nextTimes');
-  const elMode    = document.getElementById('modeMeta');
   const inputOpenAt = document.getElementById('openAt');
-  const btnTogglePause = document.getElementById('togglePause');
 
   // Modal
   const modal      = document.getElementById('modal');
@@ -172,226 +159,135 @@
 
   const pad = n => String(n).padStart(2,'0');
   const fmt = s => { s=Math.max(0,Math.floor(s)); return `${pad(Math.floor(s/3600))}:${pad(Math.floor((s%3600)/60))}:${pad(s%60)}`; };
-  const pretty = ms => new Date(ms).toLocaleString(undefined,{ dateStyle:'short', timeStyle:'short' });
 
-  // ====== GLOBAL (anchor.json) ======
-  let globalConfig = {
-    anchor_iso: DEFAULT_GLOBAL_ANCHOR_ISO,
-    manual_offset_seconds: DEFAULT_MANUAL_OFFSET_SECONDS,
-    paused: false
-  };
-
-  async function loadGlobalConfig(){
-    try{
-      // no-store + cache-buster pour éviter le cache agressif
-      const resp = await fetch('anchor.json?ts='+Date.now(), {cache:'no-store'});
-      if(resp.ok){
-        const data = await resp.json();
-        if(data.anchor_iso) globalConfig.anchor_iso = data.anchor_iso;
-        if(typeof data.manual_offset_seconds === 'number') globalConfig.manual_offset_seconds = data.manual_offset_seconds;
-        if(typeof data.paused === 'boolean') globalConfig.paused = data.paused;
-      }
-    }catch(e){ /* anchor.json absent → on garde les valeurs par défaut */ }
-  }
-
-  function getGlobalAnchorMs(){
-    return Date.parse(globalConfig.anchor_iso) + (globalConfig.manual_offset_seconds||0)*1000;
-  }
-
-  // ====== LOCAL (test admin) ======
-  function getLocalAnchorMs(){
+  function getGlobalAnchorMs(){ return Date.parse(GLOBAL_ANCHOR_ISO) + MANUAL_OFFSET_SECONDS*1000; }
+  function getAnchorMs(){
     const saved = localStorage.getItem(LS_ANCHOR);
-    return (saved && /^-?\d+$/.test(saved)) ? Number(saved) : null;
+    return (saved && /^\d+$/.test(saved)) ? Number(saved) : getGlobalAnchorMs();
   }
-  function setLocalAnchorMs(ms){
-    if(ms==null){ localStorage.removeItem(LS_ANCHOR); }
-    else { localStorage.setItem(LS_ANCHOR, String(ms)); }
-  }
-  function isPausedLocal(){ return localStorage.getItem(LS_PAUSED) === '1'; }
-  function setPausedLocal(v){
-    if(v){ localStorage.setItem(LS_PAUSED,'1'); btnTogglePause.textContent = 'Resume'; }
-    else { localStorage.removeItem(LS_PAUSED); btnTogglePause.textContent = 'Pause'; }
+  function setAnchorMs(ms){ localStorage.setItem(LS_ANCHOR, String(ms)); }
+  function resetAnchor(){ localStorage.removeItem(LS_ANCHOR); }
+
+  let anchorMs = getAnchorMs();
+
+  // Pré-remplir le picker admin avec "maintenant" (arrondi minute)
+  (function initPicker(){
+    const d = new Date();
+    d.setSeconds(0,0);
+    inputOpenAt.value = toDatetimeLocalValue(d);
+  })();
+
+  function toDatetimeLocalValue(date){
+    const yyyy = date.getFullYear();
+    const mm = pad(date.getMonth()+1);
+    const dd = pad(date.getDate());
+    const hh = pad(date.getHours());
+    const mi = pad(date.getMinutes());
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
   }
 
-  function isAdmin(){ return localStorage.getItem(LS_IS_ADMIN) === '1'; }
-  function setAdmin(v){
-    if(v){ localStorage.setItem(LS_IS_ADMIN,'1'); }
-    else { localStorage.removeItem(LS_IS_ADMIN); }
-    elAdmin.style.display = v ? 'flex' : 'none';
-    loginBtn.textContent = v ? 'Admin ✓' : 'Admin Login';
+  function prettyDate(ms){
+    return new Date(ms).toLocaleString(undefined, { dateStyle:'short', timeStyle:'short' });
   }
 
-  // État courant
-  let useLocal = false;     // si true → on utilise l'ancre TEST locale (pour vérifier avant publication)
-  let anchorMs = 0;         // ms du début d'OUVERTURE
-  let paused   = false;     // état pause appliqué à l'affichage (global ou local)
-  let frozenElapsed = null; // pour figer l'animation en pause
+  function update(){
+    const now = Date.now();
+    const elapsed = (((now - anchorMs)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
 
-  function recomputeModeAndAnchor(){
-    const local = getLocalAnchorMs();
-    if(local != null){
-      useLocal = true;
-      anchorMs = local;
-      paused   = isPausedLocal();
-      elMode.innerHTML = 'Mode: <strong>Local (TEST)</strong> — non publié';
-    }else{
-      useLocal = false;
-      anchorMs = getGlobalAnchorMs();
-      paused   = !!globalConfig.paused;
-      elMode.innerHTML = 'Mode: <strong>Global</strong> (anchor.json)';
+    // Phase: de 0 à OPEN_SEC -> OUVERT ; sinon -> FERMÉ
+    const isOpen  = elapsed < OPEN_SEC;
+    const remain  = isOpen ? (OPEN_SEC - elapsed) : (CYCLE_SEC - elapsed);
+
+    // Horloge + textes
+    const phaseSec = isOpen ? OPEN_SEC : CLOSED_SEC;
+    const progress = remain / phaseSec; // 1 -> 0 sur la phase
+
+    elClock.textContent = fmt(remain);
+    if (isOpen) {
+      elStatus.textContent = 'Hangar Open';
+      elStatus.className = 'status open';
+      elSub.textContent = 'Closes in ' + fmt(remain);
+    } else {
+      elStatus.textContent = 'Hangar Closed';
+      elStatus.className = 'status closed';
+      elSub.textContent = 'Opens in ' + fmt(remain);
     }
+
+    // ====== LED “défilement” synchronisées ======
+    // Ouvert  : commence tout VERT, puis une à une devient ROUGE
+    // Fermé   : commence tout ROUGE, puis une à une devient VERTE
+    let greenCount;
+    if (isOpen) {
+      greenCount = Math.ceil(progress * DOTS_COUNT);
+    } else {
+      greenCount = DOTS_COUNT - Math.ceil(progress * DOTS_COUNT);
+    }
+    greenCount = Math.max(0, Math.min(DOTS_COUNT, greenCount));
+
+    for (let i = 0; i < DOTS_COUNT; i++) {
+      elDots[i].className = 'dot ' + (i < greenCount ? 'g' : 'r');
+    }
+
+    // ====== Prochaines transitions (affichage) ======
+    // Prochaine fermeture = premier (anchor + OPEN_SEC + n*CYCLE) > now
+    const nextClose = nextAfter(anchorMs + OPEN_SEC*1000, CYCLE_SEC*1000, now);
+    // Prochaine ouverture = premier (anchor + n*CYCLE) > now
+    const nextOpen  = nextAfter(anchorMs, CYCLE_SEC*1000, now);
+
+    elNext.textContent = `Prochaine fermeture : ${prettyDate(nextClose)} • Prochaine ouverture : ${prettyDate(nextOpen)}`;
   }
 
-  // ====== Rendu timer ======
   function nextAfter(startMs, stepMs, nowMs){
     if (nowMs < startMs) return startMs;
     const k = Math.floor((nowMs - startMs) / stepMs) + 1;
     return startMs + k*stepMs;
   }
 
-  function update(){
-    const now = Date.now();
-
-    let elapsed;
-    if (paused){
-      if (frozenElapsed === null){
-        frozenElapsed = (((now - anchorMs)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
-      }
-      elapsed = frozenElapsed;
-    } else {
-      frozenElapsed = null;
-      elapsed = (((now - anchorMs)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
-    }
-
-    const isOpen  = elapsed < OPEN_SEC;
-    const remain  = isOpen ? (OPEN_SEC - elapsed) : (CYCLE_SEC - elapsed);
-
-    elClock.textContent = fmt(remain);
-    if (isOpen) {
-      elStatus.textContent = paused ? 'Hangar Open (Paused)' : 'Hangar Open';
-      elStatus.className = 'status open';
-      elSub.textContent = 'Time until next change (Close): ' + fmt(remain);
-    } else {
-      elStatus.textContent = paused ? 'Hangar Closed (Paused)' : 'Hangar Closed';
-      elStatus.className = 'status closed';
-      elSub.textContent = 'Time until next change (Open): ' + fmt(remain);
-    }
-
-    // LEDs
-    const phaseSec = isOpen ? OPEN_SEC : CLOSED_SEC;
-    const progress = remain / phaseSec; // 1 -> 0
-    let greenCount;
-    if (isOpen) {
-      greenCount = Math.ceil(progress * DOTS_COUNT); // vert → rouge
-    } else {
-      greenCount = DOTS_COUNT - Math.ceil(progress * DOTS_COUNT); // rouge → vert
-    }
-    greenCount = Math.max(0, Math.min(DOTS_COUNT, greenCount));
-    for (let i = 0; i < DOTS_COUNT; i++) {
-      document.getElementById('dots').children[i].className = 'dot ' + (i < greenCount ? 'g' : 'r');
-    }
-
-    // Prochaines transitions (toujours selon l'ancre en cours)
-    const nextClose = nextAfter(anchorMs + OPEN_SEC*1000, CYCLE_SEC*1000, now);
-    const nextOpen  = nextAfter(anchorMs, CYCLE_SEC*1000, now);
-    elNext.textContent = `Next close: ${pretty(nextClose)} • Next open: ${pretty(nextOpen)}`;
+  // --- Admin UI ---
+  function isAdmin(){ return localStorage.getItem(LS_IS_ADMIN) === '1'; }
+  function setAdmin(v){
+    if(v){ localStorage.setItem(LS_IS_ADMIN,'1'); }
+    else { localStorage.removeItem(LS_IS_ADMIN); }
+    document.getElementById('admin').style.display = v ? 'flex' : 'none';
+    loginBtn.textContent = v ? 'Admin ✓' : 'Admin Login';
   }
 
-  // ====== Admin : interactions ======
-  // Remplir le datetime avec "maintenant" (arrondi minute)
-  (function initPicker(){
-    const d = new Date(); d.setSeconds(0,0);
-    inputOpenAt.value = toDatetimeLocalValue(d);
-  })();
+  // init admin state
+  setAdmin(isAdmin());
 
-  function toDatetimeLocalValue(date){
-    const yyyy = date.getFullYear(), mm = pad(date.getMonth()+1), dd = pad(date.getDate());
-    const hh = pad(date.getHours()), mi = pad(date.getMinutes());
-    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
-  }
-
-  // Tester localement (sans publier)
-  document.getElementById('setLocal').onclick = () => {
-    if(!isAdmin()) return;
-    const val = inputOpenAt.value; // "YYYY-MM-DDTHH:MM" local
-    if(!val){ alert('Choisis une date/heure.'); return; }
-    const picked = new Date(val);
-    if (isNaN(picked.getTime())) { alert('Date/heure invalide.'); return; }
-    setLocalAnchorMs(picked.getTime());
-    setPausedLocal(false);
-    recomputeModeAndAnchor();
-    update();
-  };
-
-  // Pause (locale, pour tester / figer l'état)
-  btnTogglePause.onclick = () => {
-    if(!isAdmin()) return;
-    if(useLocal){
-      setPausedLocal(!isPausedLocal());
-      paused = isPausedLocal();
-    }else{
-      // en mode Global, la pause affichée vient d'anchor.json (lecture seule)
-      alert('La pause globale se règle via anchor.json (champ "paused": true/false). Active un test local pour figer ici.');
-      return;
-    }
-    frozenElapsed = null;
-    update();
-  };
-
-  // Télécharger anchor.json (pour publier sur le repo → effet global)
-  document.getElementById('downloadAnchor').onclick = () => {
-    if(!isAdmin()) return;
-    // Base sur le champ choisi (si pas de test local actif, on prend la valeur saisie)
-    const val = inputOpenAt.value;
-    const picked = val ? new Date(val) : null;
-    const iso = picked && !isNaN(picked.getTime()) ? new Date(picked.getTime()-picked.getTimezoneOffset()*60000).toISOString().replace('.000Z','Z') : new Date(getGlobalAnchorMs()).toISOString();
-    const json = JSON.stringify({ anchor_iso: iso, manual_offset_seconds: 0, paused: false }, null, 2);
-    const blob = new Blob([json], {type:'application/json'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'anchor.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
-  };
-
-  // Copier anchor.json dans le presse-papier
-  document.getElementById('copyAnchor').onclick = async () => {
-    if(!isAdmin()) return;
-    const val = inputOpenAt.value;
-    const picked = val ? new Date(val) : null;
-    const iso = picked && !isNaN(picked.getTime()) ? new Date(picked.getTime()-picked.getTimezoneOffset()*60000).toISOString().replace('.000Z','Z') : new Date(getGlobalAnchorMs()).toISOString();
-    const json = JSON.stringify({ anchor_iso: iso, manual_offset_seconds: 0, paused: false }, null, 2);
-    try{ await navigator.clipboard.writeText(json); alert('anchor.json copié !\nSur GitHub : Add file → Create new file → nom: anchor.json → colle → Commit.'); }
-    catch(e){ alert('Impossible de copier automatiquement. Utilise le bouton “Télécharger”.'); }
-  };
-
-  // Recharger la config globale depuis anchor.json (après ton commit)
-  document.getElementById('reloadGlobal').onclick = async () => {
-    if(!isAdmin()) return;
-    // on supprime l'override local pour repasser en Global, puis on recharge anchor.json
-    setLocalAnchorMs(null);
-    await loadGlobalConfig();
-    recomputeModeAndAnchor();
-    update();
-  };
-
-  // Logout (cache l’admin)
-  document.getElementById('logout').onclick = () => { setAdmin(false); };
-
-  // ====== Login modal ======
+  // login modal handlers
   loginBtn.onclick = () => { if(isAdmin()) { setAdmin(false); } else { modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } };
-  doLoginBtn.onclick = () => { if(pwdInput.value === ADMIN_PASSWORD){ setAdmin(true); modal.style.display='none'; } else { alert('Mot de passe incorrect'); } };
+  doLoginBtn.onclick = () => {
+    if(pwdInput.value === ADMIN_PASSWORD){
+      setAdmin(true);
+      modal.style.display='none';
+    } else {
+      alert('Mot de passe incorrect');
+    }
+  };
   closeModal.onclick = () => { modal.style.display='none'; };
 
-  // ====== Initialisation ======
-  (async function init(){
-    setAdmin(isAdmin());
-    setPausedLocal(isPausedLocal()); // texte du bouton
-    await loadGlobalConfig();
-    recomputeModeAndAnchor();
-    setInterval(update, 1000);
+  // admin buttons “rapides”
+  document.getElementById('openNow').onclick   = () => { if(!isAdmin()) return; anchorMs = Date.now(); setAnchorMs(anchorMs); update(); };
+  document.getElementById('closedNow').onclick = () => { if(!isAdmin()) return; anchorMs = Date.now() - OPEN_SEC*1000; setAnchorMs(anchorMs); update(); };
+  document.getElementById('resetAnchor').onclick = () => { if(!isAdmin()) return; resetAnchor(); anchorMs = getAnchorMs(); update(); };
+  document.getElementById('logout').onclick = () => { setAdmin(false); };
+
+  // admin “Set opening at chosen time”
+  document.getElementById('setFromPicker').onclick = () => {
+    if(!isAdmin()) return;
+    const val = inputOpenAt.value; // format "YYYY-MM-DDTHH:MM" (heure locale)
+    if(!val){ alert('Choisis une date/heure.'); return; }
+    const picked = new Date(val); // interprété en fuseau local
+    if (isNaN(picked.getTime())) { alert('Date/heure invalide.'); return; }
+    // L'ancre est le DÉBUT D'OUVERTURE → le cycle commence à ce moment-là
+    anchorMs = picked.getTime();
+    setAnchorMs(anchorMs);
     update();
-  })();
+  };
+
+  setInterval(update, 1000);
+  update();
 </script>
 </body>
 </html>
