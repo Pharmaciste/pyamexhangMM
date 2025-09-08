@@ -19,7 +19,6 @@
       var(--bg) url('https://images.unsplash.com/photo-1517817748496-62bc3047b9ff?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat fixed;
     min-height:100vh;
   }
-  .wm{position:fixed; inset:0; pointer-events:none; z-index:0; background:url('/assets/mammon.png') center 35% / min(80vmin,900px) no-repeat; opacity:.09; filter: drop-shadow(0 0 18px rgba(0,0,0,.6))}
   .overlay{position:relative; z-index:1; background:linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.35)); min-height:100vh;}
   .wrap{max-width:980px; margin:0 auto; padding:18px 18px 60px;}
 
@@ -64,21 +63,18 @@
 </style>
 </head>
 <body>
-<div class="wm" aria-hidden="true"></div>
 <div class="overlay">
   <div class="wrap">
 
     <!-- Header -->
     <header>
       <div class="brand">
-        <div class="brand-logo" id="secretLogo" aria-hidden="true" title=" "></div>
+        <div class="brand-logo" id="secretLogo" aria-hidden="true" title="Double-clic pour Admin"></div>
         <div class="brand-title">MAMMON TIMER</div>
         <span class="badge">LIVE</span>
       </div>
       <div class="header-right">
-        <span class="mini-badge" id="patchBadge" title="Star Citizen patch">
-          Updated for Star Citizen Patch 4.3.0-LIVE (Hotfix 10188864)
-        </span>
+        <span class="mini-badge" id="patchBadge">Updated for Star Citizen Patch 4.3.0-LIVE (Hotfix 10188864)</span>
       </div>
     </header>
 
@@ -96,16 +92,17 @@
       <div class="sub" id="subtitle">Prochaine transition dans --:--:--</div>
 
       <div class="next" id="nextTimes">Prochaine fermeture : — • Prochaine ouverture : —</div>
-      <div class="meta" id="modeMeta">Ancre initiale : <b>dernière ouverture à 21:55 (heure locale)</b>. Modifiable via Admin.</div>
+      <div class="meta" id="modeMeta">Ancre initiale : <b>prochaine ouverture à 16:28 (heure locale)</b>. Modifiable via Admin (mot de passe).</div>
 
       <!-- Admin (après login) -->
       <div class="admin" id="adminPanel">
         <label for="openTime"><strong>Dernière ouverture (HH:MM)</strong> :</label>
         <input type="time" id="openTime" step="60" />
-        <button class="btn primary" id="publishGlobal">Mettre à jour GLOBAL</button>
-        <button class="btn" id="togglePauseGlobal">Pause/Reprendre</button>
-        <button class="btn" id="reload">Recharger config</button>
+        <button class="btn primary" id="applyLocal">Appliquer (local)</button>
+        <button class="btn" id="togglePause">Pause/Reprendre</button>
+        <button class="btn" id="reset1628">Réinitialiser → prochaine 16:28</button>
         <button class="btn" id="logout">Se déconnecter</button>
+        <div style="flex-basis:100%; text-align:center; font-size:12px; opacity:.8">Astuce : mets l’heure de la <em>dernière</em> ouverture observée pour un calage précis.</div>
       </div>
     </section>
 
@@ -118,19 +115,16 @@
         <h2>Privacy Policy</h2>
         <p><em>Effective Date: September 8, 2025</em></p>
 
-        <p>We do <strong>not</strong> collect, sell, or share personal data. Timer preferences may be stored in your browser’s <strong>Local Storage</strong> for convenience. This data stays on your device and is never transmitted to our servers unless you use the Admin to push a global update.</p>
+        <p>We do <strong>not</strong> collect, sell, or share personal data. Timer preferences (anchor time, pause) may be saved in your browser’s <strong>Local Storage</strong>. This data stays on your device.</p>
 
         <h3>Cookies &amp; Tracking</h3>
-        <p>No cookies currently. If ads are enabled later (e.g., Google AdSense), third parties may set cookies you can control in your browser.</p>
+        <p>No cookies currently. If ads are enabled in the future, third parties may use cookies you can control in your browser.</p>
 
         <h3>Your Rights</h3>
-        <p>Depending on your location (e.g., GDPR / CCPA), you may have rights such as access, correction, deletion. As we do not collect personal data, these mainly relate to cookie preferences if enabled in the future.</p>
+        <p>Depending on your location (GDPR/CCPA), you may have rights like access, correction, deletion. Since we don’t collect personal data, these mainly relate to cookies if enabled later.</p>
 
         <h3>Data Retention</h3>
-        <p>We do not maintain user profiles or store personal data. Local Storage data remains on your device until you clear it.</p>
-
-        <h3>Children’s Privacy</h3>
-        <p>This site is for a general audience and does not knowingly collect information from children under 13 (or higher local threshold).</p>
+        <p>Local Storage data remains on your device until you clear it.</p>
 
         <h3>Changes</h3>
         <p>We may update this Policy from time to time. We will post changes here with a new Effective Date.</p>
@@ -141,11 +135,11 @@
 </div>
 
 <!-- Modal Admin (login) -->
-<div class="modal" id="modal">
+<div class="modal" id="modal" style="display:none">
   <div class="box">
     <h3 style="margin:0 0 10px; font-size:18px">Connexion admin</h3>
     <div class="field" style="display:flex; gap:8px">
-      <input type="password" id="pwd" placeholder="Mot de passe admin (Vercel → ADMIN_PASSWORD)" style="flex:1;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff" />
+      <input type="password" id="pwd" placeholder="Mot de passe admin" style="flex:1;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff" />
       <button class="btn" id="doLogin">OK</button>
     </div>
     <div class="actions" style="display:flex; gap:8px; margin-top:10px; justify-content:flex-end">
@@ -155,13 +149,16 @@
 </div>
 
 <script>
-  /* ===== Paramètres du cycle ===== */
-  const OPEN_SEC   = 65 * 60;   // 65:00
-  const CLOSED_SEC = 7201;      // ≈120:01
-  const DOTS=5;
-  const CYCLE_SEC = OPEN_SEC + CLOSED_SEC;
+  /* ====== Réglages de cycle ====== */
+  const OPEN_SEC   = 65 * 60;     // 65:00
+  const CLOSED_SEC = 7201;        // ~120:01
+  const CYCLE_SEC  = OPEN_SEC + CLOSED_SEC;
+  const DOTS = 5;
 
-  /* ===== Eléments ===== */
+  /* ====== Admin (mot de passe local) ====== */
+  const ADMIN_PASSWORD = 'MAMMON'; // ⚠️ change-moi
+
+  /* ====== DOM ====== */
   const elClock=document.getElementById('clock');
   const elStatus=document.getElementById('status');
   const elSub=document.getElementById('subtitle');
@@ -172,56 +169,86 @@
 
   const adminPanel=document.getElementById('adminPanel');
   const inputTime=document.getElementById('openTime');
-  const btnPublish=document.getElementById('publishGlobal');
-  const btnPause=document.getElementById('togglePauseGlobal');
-  const btnReload=document.getElementById('reload');
+  const btnApply=document.getElementById('applyLocal');
+  const btnPause=document.getElementById('togglePause');
+  const btnReset1628=document.getElementById('reset1628');
   const btnLogout=document.getElementById('logout');
 
   const modal=document.getElementById('modal');
   const pwdInput=document.getElementById('pwd');
   const doLoginBtn=document.getElementById('doLogin');
   const closeModal=document.getElementById('closeModal');
+  const secretLogo=document.getElementById('secretLogo');
 
   const ppBtn=document.getElementById('ppBtn');
   const ppSection=document.getElementById('privacy');
 
-  /* ===== Etat global ===== */
-  let cfg={anchor_iso:null, manual_offset_seconds:0, paused:false};
-  let isAdmin=false, adminPwd=null;
+  /* ====== Etat (Local Storage) ====== */
+  const LS_ANCHOR='mammon_anchor_iso';
+  const LS_PAUSE='mammon_paused';
+  let anchor_iso=null; // ISO d'une heure D'OUVERTURE
+  let paused=false;
+  let isAdmin=false;
 
-  /* ===== Utils ===== */
+  /* ====== Utils ====== */
   const pad=n=>String(n).padStart(2,'0');
   const fmt=s=>{s=Math.max(0,Math.floor(s)); return `${pad(s/3600|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`;};
   const pretty=ms=>new Date(ms).toLocaleString('fr-FR',{dateStyle:'short', timeStyle:'short'});
   const toISO=ms=>new Date(ms - new Date().getTimezoneOffset()*60000).toISOString().replace('.000Z','Z');
-  const anchorMs=()=>Date.parse(cfg.anchor_iso)+(cfg.manual_offset_seconds||0)*1000;
-  const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
 
-  /* ===== LEDs ===== */
-  // Fermé : 0→5 verts (~24 min/LED), la 5e juste avant l’ouverture
-  function greenCountClosed(remainSec){
-    const seg = CLOSED_SEC / DOTS;                 // ~1440.2 s
-    const closedElapsed = CLOSED_SEC - remainSec;  // progresse de 0 -> CLOSED_SEC
-    let cnt = Math.floor(closedElapsed / seg);     // 0..5
-    return Math.max(0, Math.min(DOTS, cnt));
+  function saveState(){
+    try{ localStorage.setItem(LS_ANCHOR, anchor_iso||''); localStorage.setItem(LS_PAUSE, paused?'1':'0'); }catch{}
   }
-  // Ouvert : 5→0 verts (12 min/LED), puis 5 min “black” (0 LED mais ouvert)
-  function greenCountOpen(remainSec){
-    if (remainSec <= 5*60) return 0;               // “black” final
-    const eff = Math.min(60*60, remainSec - 5*60); // 60 min max de LEDs
-    return Math.max(0, Math.min(DOTS, Math.ceil(eff / (12*60))));
-  }
-  function updateLeds(isOpen, remain){
-    const green = isOpen ? greenCountOpen(remain) : greenCountClosed(remain);
-    for(let i=0;i<DOTS;i++) leds[i].className='led '+(i<green?'g':'r');
-    elLedInfo.textContent = isOpen
-      ? 'Ouvert : 1 LED = 12 min • dernières 5 min sans LED'
-      : 'Fermé : 1 LED ≈ 24 min';
+  function loadState(){
+    try{
+      const a=localStorage.getItem(LS_ANCHOR); if(a) anchor_iso=a;
+      const p=localStorage.getItem(LS_PAUSE);  paused=(p==='1');
+    }catch{}
   }
 
-  /* ===== Rendu ===== */
+  function anchorMs(){
+    return anchor_iso ? Date.parse(anchor_iso) : Date.now();
+  }
+
+  function nextAfter(startMs, stepMs, nowMs){
+    return (nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
+  }
+
+  function computeISOFromHHMM(hhmm){
+    const [hh,mm]=hhmm.split(':').map(Number);
+    const now=new Date();
+    const d=new Date(now); d.setHours(hh,mm,0,0);
+    // “Dernière ouverture” => si l'heure est dans le futur, prendre hier
+    if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1);
+    return toISO(d.getTime());
+  }
+
+  function setAnchorToNext1628(){
+    const now=new Date();
+    const next=new Date(now);
+    next.setHours(16,28,0,0);
+    if(next.getTime()<=now.getTime()) next.setDate(next.getDate()+1); // prochaine occurrence
+    anchor_iso=toISO(next.getTime());
+    elMode.textContent='Ancre initiale : prochaine ouverture à 16:28 ('+pretty(next.getTime())+')';
+    saveState();
+  }
+
+  /* ====== LED logic ====== */
+  // fermé : 0→5 vertes (≈24 min chacune). La 5e n’apparaît qu’au tout dernier instant.
+  function greensClosed(remainSec){
+    const seg=CLOSED_SEC/DOTS;
+    return Math.max(0, Math.min(DOTS, DOTS - Math.ceil(remainSec/seg)));
+  }
+  // ouvert : 5→0 vertes (12 min chacune), puis 5 min “black” (0 LED mais ouvert)
+  function greensOpen(elapsedOpenSec){
+    if(elapsedOpenSec>=60*60 && elapsedOpenSec<65*60) return 0; // black final 5 min
+    if(elapsedOpenSec>=65*60) return DOTS; // sécurité modulo
+    const step=Math.floor(elapsedOpenSec/(12*60)); // 0..4
+    return Math.max(0, Math.min(DOTS, DOTS - step));
+  }
+
   function render(){
-    if(!cfg.anchor_iso){
+    if(!anchor_iso){
       elClock.textContent='--:--:--';
       elStatus.className='status closed';
       elStatus.textContent='Initialisation…';
@@ -229,116 +256,32 @@
       elNext.textContent='—';
       return;
     }
+
     const now=Date.now();
-    const elapsed=(((now-anchorMs())/1000)%CYCLE_SEC+CYCLE_SEC)%CYCLE_SEC;
-    const isOpen = elapsed < OPEN_SEC;
-    const phaseSec = isOpen ? OPEN_SEC : CLOSED_SEC;
-    const phaseElapsed = isOpen ? elapsed : (elapsed-OPEN_SEC);
-    const remain = phaseSec - phaseElapsed;
+    const base=anchorMs();
+    const elapsed=((now-base)/1000)%CYCLE_SEC; // secondes écoulées dans le cycle
+    const inOpen = elapsed < OPEN_SEC;
 
-    elClock.textContent = fmt(remain);
-    elStatus.className='status '+(isOpen?'open':'closed');
-    elStatus.textContent = 'Hangar '+(isOpen?'Open':'Closed') + (cfg.paused?' (Paused)':'');
-    elSub.textContent = 'Prochaine transition ('+(isOpen?'fermeture':'ouverture')+') dans '+fmt(remain);
+    const phaseElapsed = inOpen ? elapsed : (elapsed-OPEN_SEC);
+    const phaseSec     = inOpen ? OPEN_SEC : CLOSED_SEC;
+    const remain       = phaseSec - phaseElapsed;
 
-    updateLeds(isOpen, remain);
+    // Clock + status
+    elClock.textContent=fmt(remain);
+    elStatus.className='status '+(inOpen?'open':'closed');
+    elStatus.textContent='Hangar '+(inOpen?'Open':'Closed')+(paused?' (Paused)':'');
+    elSub.textContent='Prochaine transition ('+(inOpen?'fermeture':'ouverture')+') dans '+fmt(remain);
 
-    const nClose=nextAfter(anchorMs()+OPEN_SEC*1000, CYCLE_SEC*1000, now);
-    const nOpen =nextAfter(anchorMs(),                CYCLE_SEC*1000, now);
-    elNext.textContent = `Prochaine fermeture : ${pretty(nClose)} • Prochaine ouverture : ${pretty(nOpen)}`;
+    // LEDs
+    const green = inOpen ? greensOpen(phaseElapsed) : greensClosed(remain);
+    for(let i=0;i<DOTS;i++) leds[i].className='led '+(i<green?'g':'r');
+    elLedInfo.textContent = inOpen ? 'Ouvert : 1 LED = 12 min • dernières 5 min sans LED'
+                                   : 'Fermé : 1 LED ≈ 24 min';
+
+    // Prochaines échéances
+    const nClose=nextAfter(base+OPEN_SEC*1000, CYCLE_SEC*1000, now);
+    const nOpen =nextAfter(base,                CYCLE_SEC*1000, now);
+    elNext.textContent=`Prochaine fermeture : ${pretty(nClose)} • Prochaine ouverture : ${pretty(nOpen)}`;
   }
 
-  /* ===== Initialiser l’ancre sur la DERNIÈRE ouverture à 21:55 (locale) ===== */
-  function initAnchorToLast2155(){
-    const now=new Date();
-    const last=new Date(now);
-    last.setHours(21,55,0,0);
-    if(last.getTime() >= now.getTime()){ last.setDate(last.getDate()-1); } // “hier 21:55” si on est avant 21:55
-    cfg.anchor_iso = toISO(last.getTime());  // l’ancre est un instant d’OUVERTURE
-    cfg.manual_offset_seconds = 0;
-    elMode.textContent = 'Ancre initiale : dernière ouverture à 21:55 locale ('+ pretty(last.getTime()) +')';
-  }
-
-  /* ===== Admin (login caché) ===== */
-  function setAdminUI(v){ isAdmin=v; adminPanel.style.display=v?'flex':'none'; if(!v) adminPwd=null; }
-  const secretLogo = document.getElementById('secretLogo');
-  secretLogo.addEventListener('dblclick', ()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); });
-  document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='a'){ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } });
-  if (location.hash === '#admin'){ setTimeout(()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }, 50); }
-
-  doLoginBtn.onclick= ()=>{ adminPwd=pwdInput.value.trim(); if(!adminPwd){ alert('Entre le mot de passe'); return; } setAdminUI(true); modal.style.display='none'; };
-  closeModal.onclick=()=>{ modal.style.display='none'; };
-  btnLogout.onclick=()=> setAdminUI(false);
-
-  function computeAnchorIsoFromHHMM(hhmm){
-    const [hh,mm]=hhmm.split(':').map(Number);
-    const now=new Date();
-    const d=new Date(now); d.setHours(hh,mm,0,0);
-    if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1); // si futur -> dernière occurrence
-    return toISO(d.getTime());
-  }
-
-  btnPublish.onclick= async ()=>{
-    if(!isAdmin || !adminPwd){ modal.style.display='flex'; return; }
-    const val=inputTime.value.trim(); if(!val) return alert('Indique HH:MM');
-    const iso=computeAnchorIsoFromHHMM(val);
-    try{
-      const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:adminPwd,anchor_iso:iso,manual_offset_seconds:0,paused:false})});
-      if(!r.ok){ if(r.status===401){ setAdminUI(false); return alert('Mot de passe incorrect'); } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
-      cfg=await r.json();
-      alert('✅ Mise à jour globale enregistrée');
-      elMode.textContent='Config globale chargée. Dernière MAJ : '+pretty(Date.parse(cfg.anchor_iso));
-      render();
-    }catch(err){ alert('Erreur réseau'); console.error(err); }
-  };
-
-  btnPause.onclick= async ()=>{
-    if(!isAdmin || !adminPwd){ modal.style.display='flex'; return; }
-    try{
-      const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:adminPwd,anchor_iso:cfg.anchor_iso,manual_offset_seconds:cfg.manual_offset_seconds||0,paused:!cfg.paused})});
-      if(!r.ok){ if(r.status===401){ setAdminUI(false); return alert('Mot de passe incorrect'); } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
-      cfg=await r.json(); render();
-    }catch(err){ alert('Erreur réseau'); console.error(err); }
-  };
-
-  btnReload.onclick= async ()=>{
-    try{
-      const r=await fetch('/api/anchor?ts='+Date.now(),{cache:'no-store'});
-      if(!r.ok) throw new Error(r.status);
-      const js=await r.json();
-      cfg.anchor_iso=js.anchor_iso||cfg.anchor_iso;
-      cfg.manual_offset_seconds=js.manual_offset_seconds||0;
-      cfg.paused=!!js.paused;
-      elMode.textContent='Config globale chargée. Dernière MAJ : '+pretty(Date.parse(cfg.anchor_iso));
-      render();
-    }catch{ alert('Impossible de recharger la config'); }
-  };
-
-  /* ===== Privacy toggle ===== */
-  function setPrivacyVisibility(show){
-    ppSection.style.display = show ? 'block' : 'none';
-    ppSection.setAttribute('aria-hidden', String(!show));
-    ppBtn.setAttribute('aria-expanded', String(show));
-    if (show) ppSection.scrollIntoView({behavior:'smooth'});
-  }
-  function togglePrivacy(e){
-    e && e.preventDefault();
-    const showing = ppSection.style.display === 'block';
-    setPrivacyVisibility(!showing);
-    if (!showing) { history.replaceState(null, '', '#privacy'); }
-    else { history.replaceState(null, '', ' '); }
-  }
-  ppBtn.addEventListener('click', togglePrivacy);
-  if (location.hash === '#privacy') setPrivacyVisibility(true);
-
-  /* ===== Tick & Go ===== */
-  setInterval(()=>{ if(!cfg.paused) render(); },1000);
-
-  // Ancre = DERNIÈRE ouverture à 21:55 locale (i.e., “hier 21:55” si on est avant 21:55 maintenant)
-  initAnchorToLast2155();
-  // Préremplir l’input admin à 21:55 pour les ajustements
-  inputTime.value='21:55';
-  render();
-</script>
-</body>
-</html>
+  /* ======*
