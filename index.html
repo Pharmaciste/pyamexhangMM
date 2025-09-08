@@ -12,6 +12,9 @@
   .panel{background:rgba(10,12,18,.75);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px;text-align:center;box-shadow:0 8px 28px rgba(0,0,0,.35);backdrop-filter: blur(4px);}
   header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
   .brand{font-weight:800;letter-spacing:.2px;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+  .login-btn{padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#111827;color:#fff;cursor:pointer}
+  .login-btn:hover{border-color:#3f3f46}
+
   h1{margin:6px 0 10px;font-size:28px;font-weight:800;text-shadow:0 1px 2px rgba(0,0,0,.4)}
   .clock{font:38px/1.1 ui-monospace,Menlo,Consolas,monospace;margin:6px 0 10px}
   .status{margin:8px 0 2px;font-weight:800}
@@ -21,21 +24,35 @@
   .dot{width:22px;height:22px;border-radius:50%;border:1px solid rgba(0,0,0,.6);box-shadow: inset 0 0 16px rgba(0,0,0,.5),0 0 10px rgba(0,0,0,.2);}
   .g{background:#22c55e;box-shadow: inset 0 0 14px rgba(0,0,0,.5),0 0 14px rgba(34,197,94,.4)}
   .r{background:#ef4444;box-shadow: inset 0 0 14px rgba(0,0,0,.5),0 0 14px rgba(239,68,68,.35)}
+
   .next-times{margin-top:12px;font-size:13px;opacity:.95}
   .meta{margin-top:8px;font-size:12px;opacity:.85}
-  .admin{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+
+  /* Admin */
+  .admin{display:none;margin-top:14px;gap:8px;flex-direction:column}
   .admin-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center}
   .btn{padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#111827;color:#fff;cursor:pointer}
   .btn:hover{border-color:#3f3f46}
-  .admin input[type="time"], .admin input[type="password"]{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff}
+  .admin input[type="time"]{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff}
   .warn{color:#fbbf24;font-size:12px}
+
+  /* Modal login */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:20px}
+  .modal .box{background:#0f1220;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:16px;width:100%;max-width:360px}
+  .modal h3{margin:0 0 10px;font-size:18px}
+  .field{display:flex;gap:8px}
+  .field input{flex:1;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff}
+  .actions{display:flex;gap:8px;margin-top:10px;justify-content:flex-end}
 </style>
 </head>
 <body>
 <div class="overlay">
   <div class="wrap">
     <div class="panel">
-      <header><div class="brand">Contested Zone Timers</div></header>
+      <header>
+        <div class="brand">Contested Zone Timers</div>
+        <button class="login-btn" id="loginBtn">Admin</button>
+      </header>
 
       <h1>Executive Hangar Timer</h1>
       <div class="clock" id="clock">--:--:--</div>
@@ -50,18 +67,17 @@
       <div class="next-times" id="nextTimes">Next close: — • Next open: —</div>
       <div class="meta" id="modeMeta">Config globale chargée.</div>
 
-      <!-- ADMIN (tout se fait ici) -->
-      <div class="admin">
+      <!-- Panneau ADMIN (affiché après login) -->
+      <div class="admin" id="adminPanel">
         <div class="admin-row">
           <label for="openTime">Dernière ouverture (HH:MM) :</label>
           <input type="time" id="openTime" step="60" />
-          <label for="pwd">Mot de passe admin :</label>
-          <input type="password" id="pwd" placeholder="******" />
         </div>
         <div class="admin-row">
           <button class="btn" id="publishGlobal">Mettre à jour GLOBAL (ouvre à HH:MM)</button>
           <button class="btn" id="togglePauseGlobal">Pause/Reprendre GLOBAL</button>
           <button class="btn" id="reload">Recharger la config</button>
+          <button class="btn" id="logout">Se déconnecter</button>
         </div>
         <div class="meta warn">Entre l’heure de la <b>dernière ouverture</b> vue en jeu (heure locale). Le site recalcule pour tout le monde.</div>
       </div>
@@ -69,30 +85,57 @@
   </div>
 </div>
 
+<!-- Modal de connexion -->
+<div class="modal" id="modal">
+  <div class="box">
+    <h3>Connexion admin</h3>
+    <div class="field">
+      <input type="password" id="pwd" placeholder="Mot de passe admin" />
+      <button class="btn" id="doLogin">OK</button>
+    </div>
+    <div class="actions">
+      <button class="btn" id="closeModal">Fermer</button>
+    </div>
+    <div class="meta">Le mot de passe est défini dans Vercel → ENV `ADMIN_PASSWORD`.</div>
+  </div>
+</div>
+
 <script>
-  // ----- Réglages du cycle -----
+  /* ----- Réglages du cycle ----- */
   const OPEN_MIN=60, CLOSED_MIN=120, DOTS_COUNT=5;
   const CYCLE_SEC=(OPEN_MIN+CLOSED_MIN)*60, OPEN_SEC=OPEN_MIN*60, CLOSED_SEC=CLOSED_MIN*60;
 
-  // UI
+  /* UI */
   const elClock=document.getElementById('clock'), elStatus=document.getElementById('status'),
         elSub=document.getElementById('subtitle'), elDots=document.getElementById('dots').children,
         elNext=document.getElementById('nextTimes'), elMode=document.getElementById('modeMeta');
-  const inputTime=document.getElementById('openTime'), inputPwd=document.getElementById('pwd');
+  const inputTime=document.getElementById('openTime');
   const btnPublish=document.getElementById('publishGlobal'), btnPause=document.getElementById('togglePauseGlobal'),
-        btnReload=document.getElementById('reload');
+        btnReload=document.getElementById('reload'), btnLogout=document.getElementById('logout');
+  const loginBtn=document.getElementById('loginBtn'), modal=document.getElementById('modal'),
+        pwdInput=document.getElementById('pwd'), doLoginBtn=document.getElementById('doLogin'),
+        closeModalBtn=document.getElementById('closeModal'), adminPanel=document.getElementById('adminPanel');
 
-  // État global (vient de l’API)
+  /* État global (API) */
   let cfg={anchor_iso:'2025-09-07T16:53:00Z', manual_offset_seconds:0, paused:false};
 
-  // Helpers
+  /* Session admin (mémoire) */
+  let isAdmin=false, adminPwd=null;
+
   const pad=n=>String(n).padStart(2,'0');
   const fmt=s=>{s=Math.max(0,Math.floor(s)); return `${pad(Math.floor(s/3600))}:${pad(Math.floor((s%3600)/60))}:${pad(s%60)}`;};
   const pretty=ms=>new Date(ms).toLocaleString(undefined,{dateStyle:'short',timeStyle:'short'});
   const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
   const anchorMs=()=>Date.parse(cfg.anchor_iso)+(cfg.manual_offset_seconds||0)*1000;
 
-  // Timer + LEDs
+  function setAdminUI(v){
+    isAdmin=v;
+    adminPanel.style.display=v?'flex':'none';
+    loginBtn.textContent = v ? 'Admin ✓' : 'Admin';
+    if(!v){ adminPwd=null; }
+  }
+
+  /* Timer + LEDs */
   function update(){
     const now=Date.now();
     const elapsed=(((now-anchorMs())/1000)%CYCLE_SEC+CYCLE_SEC)%CYCLE_SEC;
@@ -105,60 +148,58 @@
     elSub.textContent='Time until next change ('+(isOpen?'Close':'Open')+'): '+fmt(remain);
 
     const phaseSec=isOpen?OPEN_SEC:CLOSED_SEC;
-    const progress=remain/phaseSec; // 1→0
+    const progress=remain/phaseSec;
     let greenCount=isOpen?Math.ceil(progress*DOTS_COUNT):DOTS_COUNT-Math.ceil(progress*DOTS_COUNT);
     greenCount=Math.max(0,Math.min(DOTS_COUNT,greenCount));
-    for(let i=0;i<DOTS_COUNT;i++){ elDots[i].className='dot '+(i<greenCount?'g':'r'); }
+    for(let i=0;i<DOTS_COUNT;i++) elDots[i].className='dot '+(i<greenCount?'g':'r');
 
     const nextClose=nextAfter(anchorMs()+OPEN_SEC*1000,CYCLE_SEC*1000,now);
     const nextOpen =nextAfter(anchorMs(),CYCLE_SEC*1000,now);
     elNext.textContent=`Next close: ${pretty(nextClose)} • Next open: ${pretty(nextOpen)}`;
   }
 
-  // Charger la config depuis l’API
   async function loadConfig(){
     const r=await fetch('/api/anchor?ts='+Date.now(),{cache:'no-store'});
     if(!r.ok){ elMode.textContent='Erreur API: '+r.status; return; }
     cfg=await r.json();
     elMode.textContent='Config globale chargée.';
-    const d=new Date(); document.getElementById('openTime').value=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const d=new Date(); inputTime.value=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
     update();
   }
 
-  // Transformer HH:MM en dernière occurrence (aujourd’hui si passée, sinon hier)
   function lastOccurrenceIso(hh,mm){
     const now=new Date(); const d=new Date(now); d.setHours(hh,mm,0,0);
     if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1);
-    // ISO UTC propre (sans ms)
     return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().replace('.000Z','Z');
   }
 
-  // Publier nouvel horaire global
+  /* Actions admin */
   btnPublish.onclick=async ()=>{
-    const val=inputTime.value.trim(), pwd=inputPwd.value;
-    if(!val) return alert('Indique HH:MM');
-    if(!pwd) return alert('Mot de passe requis');
-    const [hh,mm]=val.split(':').map(Number);
-    if(Number.isNaN(hh)||Number.isNaN(mm)) return alert('Heure invalide');
-
+    if(!isAdmin || !adminPwd){ modal.style.display='flex'; return; }
+    const val=inputTime.value.trim(); if(!val) return alert('Indique HH:MM');
+    const [hh,mm]=val.split(':').map(Number); if(Number.isNaN(hh)||Number.isNaN(mm)) return alert('Heure invalide');
     const iso=lastOccurrenceIso(hh,mm);
     const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({password:pwd,anchor_iso:iso,manual_offset_seconds:0,paused:false})});
-    if(!r.ok){ const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
-    cfg=await r.json(); inputPwd.value=''; alert('✅ Mise à jour globale enregistrée.'); update();
+      body:JSON.stringify({password:adminPwd,anchor_iso:iso,manual_offset_seconds:0,paused:false})});
+    if(!r.ok){ if(r.status===401){ setAdminUI(false); alert('Mot de passe incorrect.'); return; } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
+    cfg=await r.json(); alert('✅ Mise à jour globale enregistrée.'); update();
   };
 
-  // Pause/Reprendre global
   btnPause.onclick=async ()=>{
-    const pwd=inputPwd.value; if(!pwd) return alert('Mot de passe requis');
+    if(!isAdmin || !adminPwd){ modal.style.display='flex'; return; }
     const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({password:pwd,anchor_iso:cfg.anchor_iso,manual_offset_seconds:cfg.manual_offset_seconds||0,paused:!cfg.paused})});
-    if(!r.ok){ const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
-    cfg=await r.json(); inputPwd.value=''; update();
+      body:JSON.stringify({password:adminPwd,anchor_iso:cfg.anchor_iso,manual_offset_seconds:cfg.manual_offset_seconds||0,paused:!cfg.paused})});
+    if(!r.ok){ if(r.status===401){ setAdminUI(false); alert('Mot de passe incorrect.'); return; } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
+    cfg=await r.json(); update();
   };
 
-  // Recharger
   btnReload.onclick=loadConfig;
+  btnLogout.onclick=()=> setAdminUI(false);
+
+  /* Login modal */
+  loginBtn.onclick = ()=>{ if(isAdmin){ setAdminUI(false); } else { modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } };
+  doLoginBtn.onclick= ()=>{ adminPwd=pwdInput.value.trim(); if(!adminPwd){ alert('Entre le mot de passe.'); return; } setAdminUI(true); modal.style.display='none'; };
+  closeModalBtn.onclick=()=>{ modal.style.display='none'; };
 
   setInterval(update,1000);
   loadConfig();
