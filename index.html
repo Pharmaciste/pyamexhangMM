@@ -55,24 +55,17 @@
   .meta{margin-top:10px; font-size:12px; opacity:.9}
   .next{margin-top:12px; font-size:13px; opacity:.96}
 
-  /* footer nav + privacy */
-  .footer-nav{margin-top:22px; padding-top:14px; border-top:1px solid rgba(255,255,255,.08); display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:center; font-size:14px}
-  .footer-nav a{color:#e5e7eb; text-decoration:none; border:1px solid rgba(255,255,255,.12); padding:6px 10px; border-radius:10px}
-  .footer-nav a:hover{border-color:#334155}
-  .footer-note{margin-top:8px; text-align:center; opacity:.7; font-size:12px}
+  /* bouton Privacy en bas */
+  .pp-cta-wrap{margin:22px 0 8px; display:flex; justify-content:center}
+  .pp-cta{padding:9px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:#0f172a; color:#fff; text-decoration:none}
+  .pp-cta:hover{border-color:#334155}
 
+  /* Privacy */
   .privacy{display:none; margin-top:16px}
   .privacy .box{background:var(--panel); border:1px solid var(--panel-border); border-radius:16px; padding:16px; box-shadow:0 12px 30px var(--shadow)}
   .privacy h2{margin:0 0 10px; font-size:20px; font-weight:900}
   .privacy h3{margin:16px 0 6px; font-size:16px; font-weight:800}
   .privacy p, .privacy li{color:#dbeafe}
-  .btn{padding:9px 12px; border-radius:12px; border:1px solid var(--panel-border); background:#0f172a; color:#fff; cursor:pointer}
-  .btn.primary{background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111; border-color:transparent; font-weight:900}
-
-  /* bouton Privacy en bas */
-  .pp-cta-wrap{margin:16px 0; display:flex; justify-content:center}
-  .pp-cta{padding:9px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:#0f172a; color:#fff; text-decoration:none}
-  .pp-cta:hover{border-color:#334155}
 </style>
 </head>
 <body>
@@ -117,7 +110,7 @@
           <input type="time" id="openTime" step="60" />
         </div>
         <div class="admin-row" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:8px">
-          <button class="btn primary" id="publishGlobal">Mettre à jour GLOBAL</button>
+          <button class="btn" style="padding:9px 12px;border-radius:12px;border:1px solid var(--panel-border);background:linear-gradient(90deg, var(--accent), var(--accent-2));color:#111;font-weight:900" id="publishGlobal">Mettre à jour GLOBAL</button>
           <button class="btn" id="togglePauseGlobal">Pause/Reprendre GLOBAL</button>
           <button class="btn" id="reload">Recharger</button>
           <button class="btn" id="logout">Se déconnecter</button>
@@ -125,17 +118,6 @@
         <div class="meta">Indique l’heure <b>locale</b> de la dernière ouverture observée. Le site recalcule pour tous.</div>
       </div>
     </section>
-
-    <!-- ====== FOOTER NAV ====== -->
-    <nav class="footer-nav">
-      <a href="https://buymeacoffee.com/yourname" target="_blank" rel="noopener">☕ Buy me a coffee</a>
-      <a href="/index.html">Home</a>
-      <a href="/maps.html">Contested Zone Maps</a>
-      <a href="/ships.html">Ships</a>
-      <a href="/how-it-works.html">How it works</a>
-      <span class="mini-badge" title="Referral">Use my Referral Code: <b>STAR-9D45-G3B6</b></span>
-      <a href="#privacy" id="openPP">Privacy Policy</a>
-    </nav>
 
     <!-- Bouton d'accès rapide à la Privacy Policy -->
     <div class="pp-cta-wrap">
@@ -148,7 +130,7 @@
         <h2>Privacy Policy</h2>
         <p><em>Effective Date: September 8, 2025</em></p>
 
-        <p>Welcome to <strong>Contested Zone Timers</strong>. Your privacy matters to us. This Policy explains what we (don’t) collect, how we may use cookies/ads in the future, and your rights.</p>
+        <p>Welcome! Your privacy matters to us. This Policy explains what we do (and don’t) collect, how we may use cookies/ads in the future, and your rights.</p>
 
         <h3>Information We Collect</h3>
         <p>We do <strong>not</strong> collect, sell, or share personal data. Timer preferences are saved in your browser’s <strong>Local Storage</strong> for convenience. This data stays on your device and is never transmitted to our servers.</p>
@@ -170,12 +152,6 @@
 
         <h3>Changes to This Policy</h3>
         <p>We may update this Policy from time to time. We will post changes here with a new Effective Date. Please check this page periodically.</p>
-
-        <div class="footer-note" style="margin-top:14px">
-          Home • How it works • About • Privacy Policy<br>
-          Executive Hangar Timer, Built by Appieman.<br>
-          <small>Last updated: 08 Sep 2025</small>
-        </div>
       </div>
     </section>
 
@@ -222,8 +198,7 @@
   const doLoginBtn=document.getElementById('doLogin');
   const closeModal=document.getElementById('closeModal');
 
-  /* Footer / Privacy */
-  const openPP=document.getElementById('openPP');
+  /* Privacy */
   const ppBtn=document.getElementById('ppBtn');
   const ppSection=document.getElementById('privacy');
 
@@ -298,16 +273,14 @@
 
   document.getElementById('reload').onclick= loadCfg;
 
-  /* ===== Privacy: ouvrir/afficher & hash support ===== */
+  /* ===== Privacy: bouton qui affiche & scroll ===== */
   function openPrivacy(){
     ppSection.style.display='block';
     ppSection.scrollIntoView({behavior:'smooth'});
   }
-  openPP.addEventListener('click', (e)=>{ e.preventDefault(); openPrivacy(); });
   ppBtn.addEventListener('click', (e)=>{ e.preventDefault(); openPrivacy(); });
 
   if (location.hash === '#privacy') {
-    // si l'utilisateur arrive déjà avec #privacy
     ppSection.style.display='block';
   }
 
