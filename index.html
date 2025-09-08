@@ -5,11 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Executive Hangar Timer</title>
 <style>
-  /* --- Base UI --- */
   *{box-sizing:border-box} html,body{margin:0;padding:0}
   body{
     font:16px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-    color:#fff; min-height:100vh; 
+    color:#fff; min-height:100vh;
     background:#0b0d12 url('https://images.unsplash.com/photo-1517817748496-62bc3047b9ff?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat fixed;
   }
   .overlay{background:rgba(0,0,0,.45); min-height:100vh;}
@@ -45,29 +44,23 @@
   .r{ background:#ef4444; box-shadow: inset 0 0 14px rgba(0,0,0,.5), 0 0 14px rgba(239,68,68,.35) }
 
   .next-times{margin-top:12px; font-size:13px; opacity:.95}
+  .meta{margin-top:8px; font-size:12px; opacity:.85}
 
-  /* --- Admin (masqué tant qu'on n'est pas connecté) --- */
+  /* Admin simplifié */
   .admin{display:none; margin-top:14px; gap:8px; flex-wrap:wrap; justify-content:center}
+  .row-admin{display:flex; gap:8px; flex-wrap:wrap; justify-content:center; align-items:center}
   .btn{padding:8px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:#111827; color:#fff; cursor:pointer}
   .btn:hover{border-color:#3f3f46}
-  .note{opacity:.85; font-size:12px; margin-top:8px}
+  .admin input[type="datetime-local"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
+  .note{opacity:.85; font-size:12px; margin-top:6px}
 
-  /* --- Modal login --- */
+  /* Modal login */
   .modal{position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; padding:20px}
   .modal .box{background:#0f1220; border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:16px; width:100%; max-width:360px}
   .modal h3{margin:0 0 10px; font-size:18px}
   .field{display:flex; gap:8px}
   .field input{flex:1; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
   .actions{display:flex; gap:8px; margin-top:10px; justify-content:flex-end}
-
-  /* --- Admin form extra --- */
-  .admin-row{display:flex; gap:8px; flex-wrap:wrap; justify-content:center; align-items:center; margin-top:6px}
-  .admin-row input[type="datetime-local"],
-  .admin-row input[type="time"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
-
-  footer{margin-top:14px; font-size:12px; opacity:.85}
-  footer a{color:#a7f3d0; text-decoration:none}
-  footer a:hover{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -88,7 +81,6 @@
       <div class="clock" id="clock">--:--:--</div>
 
       <div class="row" id="dots">
-        <!-- 5 pastilles -->
         <div class="dot g"></div><div class="dot g"></div><div class="dot g"></div><div class="dot g"></div><div class="dot g"></div>
       </div>
 
@@ -96,41 +88,24 @@
       <div class="sub" id="subtitle">Time until next change: --:--:--</div>
 
       <div class="next-times" id="nextTimes">Next close: — • Next open: —</div>
+      <div class="meta" id="modeMeta">Mode: <strong>Global</strong> (anchor.json)</div>
 
-      <!-- Zone admin (après connexion) -->
+      <!-- Admin ultra simple -->
       <div class="admin" id="admin">
-        <!-- Méthode A : “Open starts now” -->
-        <div class="admin-row">
-          <button class="btn" id="openNow">Open starts now</button>
-          <button class="btn" id="closedNow">Closed starts now</button>
-        </div>
-
-        <!-- Méthode B : date+heure précises -->
-        <div class="admin-row">
+        <div class="row-admin">
           <input type="datetime-local" id="openAt" />
-          <button class="btn" id="setFromPicker">Set opening at chosen date/time</button>
-        </div>
-
-        <!-- Méthode C : juste une heure (on prend la DERNIÈRE occurrence) -->
-        <div class="admin-row">
-          <input type="time" id="openTime" step="60" />
-          <button class="btn" id="setFromTimeDaily">Set last opening at time (HH:MM)</button>
-        </div>
-
-        <!-- Outils -->
-        <div class="admin-row">
-          <button class="btn" id="resetAnchor">Reset to global anchor</button>
+          <button class="btn" id="setLocal">Tester (local)</button>
           <button class="btn" id="togglePause">Pause</button>
+        </div>
+        <div class="row-admin">
+          <button class="btn" id="downloadAnchor">Télécharger anchor.json</button>
+          <button class="btn" id="copyAnchor">Copier anchor.json</button>
+          <button class="btn" id="reloadGlobal">Recharger ancre globale</button>
           <button class="btn" id="logout">Logout</button>
         </div>
-
-        <div class="note">Choisis l’heure d’OUVERTURE observée en jeu. Le site cyclera automatiquement (1h open → 2h closed).</div>
+        <div class="note">Choisis l’heure exacte de la <b>dernière ouverture</b>. “Tester (local)” met à jour immédiatement.  
+        Pour publier pour tout le monde : utilise <b>Télécharger/Copier anchor.json</b> puis ajoute/édite ce fichier à la racine du dépôt.</div>
       </div>
-
-      <footer>
-        Timing UI inspired by <a href="https://exec.xyxyll.com" target="_blank" rel="noreferrer">Xyxyll</a> — used under MIT.
-        Please keep a <code>LICENSE</code> (MIT) in your repo.
-      </footer>
     </div>
   </div>
 </div>
@@ -159,16 +134,15 @@
   const CLOSED_MIN = 120;
   const DOTS_COUNT = 5;
 
-  // ⚓ Ancre globale par défaut (UTC) — utile si tu veux une base publique
-  // Exemple: 7 sept. 2025 18:53 (Paris) = 16:53 UTC
-  const GLOBAL_ANCHOR_ISO = '2025-09-07T16:53:00Z';
-  const MANUAL_OFFSET_SECONDS = 0;   // micro-ajustement (+/- sec) si besoin
+  // Ancre par défaut (au cas où anchor.json n'existe pas encore)
+  const DEFAULT_GLOBAL_ANCHOR_ISO = '2025-09-07T16:53:00Z'; // 7 sept. 2025 18:53 Paris = 16:53 UTC
+  const DEFAULT_MANUAL_OFFSET_SECONDS = 0;
 
   // Connexion simple (client-side)
   const ADMIN_PASSWORD = 'admin123'; // ← CHANGE MOI !
   const LS_IS_ADMIN = 'eh_is_admin_v1';
-  const LS_ANCHOR   = 'eh_anchor_ms_v1';
-  const LS_PAUSED   = 'eh_paused_v1';
+  const LS_ANCHOR   = 'eh_anchor_ms_v1';  // override local pour TESTER
+  const LS_PAUSED   = 'eh_paused_v1';     // pause locale
 
   // Patch banner (modifiable sans toucher au reste)
   document.getElementById('patchTag').textContent  = '4.3.0-LIVE';
@@ -185,8 +159,8 @@
   const elDots    = document.getElementById('dots').children;
   const elAdmin   = document.getElementById('admin');
   const elNext    = document.getElementById('nextTimes');
-  const inputOpenAt   = document.getElementById('openAt');
-  const inputOpenTime = document.getElementById('openTime');
+  const elMode    = document.getElementById('modeMeta');
+  const inputOpenAt = document.getElementById('openAt');
   const btnTogglePause = document.getElementById('togglePause');
 
   // Modal
@@ -200,13 +174,44 @@
   const fmt = s => { s=Math.max(0,Math.floor(s)); return `${pad(Math.floor(s/3600))}:${pad(Math.floor((s%3600)/60))}:${pad(s%60)}`; };
   const pretty = ms => new Date(ms).toLocaleString(undefined,{ dateStyle:'short', timeStyle:'short' });
 
-  function getGlobalAnchorMs(){ return Date.parse(GLOBAL_ANCHOR_ISO) + MANUAL_OFFSET_SECONDS*1000; }
-  function getAnchorMs(){
-    const saved = localStorage.getItem(LS_ANCHOR);
-    return (saved && /^-?\\d+$/.test(saved)) ? Number(saved) : getGlobalAnchorMs();
+  // ====== GLOBAL (anchor.json) ======
+  let globalConfig = {
+    anchor_iso: DEFAULT_GLOBAL_ANCHOR_ISO,
+    manual_offset_seconds: DEFAULT_MANUAL_OFFSET_SECONDS,
+    paused: false
+  };
+
+  async function loadGlobalConfig(){
+    try{
+      // no-store + cache-buster pour éviter le cache agressif
+      const resp = await fetch('anchor.json?ts='+Date.now(), {cache:'no-store'});
+      if(resp.ok){
+        const data = await resp.json();
+        if(data.anchor_iso) globalConfig.anchor_iso = data.anchor_iso;
+        if(typeof data.manual_offset_seconds === 'number') globalConfig.manual_offset_seconds = data.manual_offset_seconds;
+        if(typeof data.paused === 'boolean') globalConfig.paused = data.paused;
+      }
+    }catch(e){ /* anchor.json absent → on garde les valeurs par défaut */ }
   }
-  function setAnchorMs(ms){ localStorage.setItem(LS_ANCHOR, String(ms)); }
-  function resetAnchor(){ localStorage.removeItem(LS_ANCHOR); }
+
+  function getGlobalAnchorMs(){
+    return Date.parse(globalConfig.anchor_iso) + (globalConfig.manual_offset_seconds||0)*1000;
+  }
+
+  // ====== LOCAL (test admin) ======
+  function getLocalAnchorMs(){
+    const saved = localStorage.getItem(LS_ANCHOR);
+    return (saved && /^-?\d+$/.test(saved)) ? Number(saved) : null;
+  }
+  function setLocalAnchorMs(ms){
+    if(ms==null){ localStorage.removeItem(LS_ANCHOR); }
+    else { localStorage.setItem(LS_ANCHOR, String(ms)); }
+  }
+  function isPausedLocal(){ return localStorage.getItem(LS_PAUSED) === '1'; }
+  function setPausedLocal(v){
+    if(v){ localStorage.setItem(LS_PAUSED,'1'); btnTogglePause.textContent = 'Resume'; }
+    else { localStorage.removeItem(LS_PAUSED); btnTogglePause.textContent = 'Pause'; }
+  }
 
   function isAdmin(){ return localStorage.getItem(LS_IS_ADMIN) === '1'; }
   function setAdmin(v){
@@ -216,31 +221,28 @@
     loginBtn.textContent = v ? 'Admin ✓' : 'Admin Login';
   }
 
-  function isPaused(){ return localStorage.getItem(LS_PAUSED) === '1'; }
-  function setPaused(v){
-    if(v){ localStorage.setItem(LS_PAUSED,'1'); btnTogglePause.textContent = 'Resume'; }
-    else { localStorage.removeItem(LS_PAUSED); btnTogglePause.textContent = 'Pause'; }
+  // État courant
+  let useLocal = false;     // si true → on utilise l'ancre TEST locale (pour vérifier avant publication)
+  let anchorMs = 0;         // ms du début d'OUVERTURE
+  let paused   = false;     // état pause appliqué à l'affichage (global ou local)
+  let frozenElapsed = null; // pour figer l'animation en pause
+
+  function recomputeModeAndAnchor(){
+    const local = getLocalAnchorMs();
+    if(local != null){
+      useLocal = true;
+      anchorMs = local;
+      paused   = isPausedLocal();
+      elMode.innerHTML = 'Mode: <strong>Local (TEST)</strong> — non publié';
+    }else{
+      useLocal = false;
+      anchorMs = getGlobalAnchorMs();
+      paused   = !!globalConfig.paused;
+      elMode.innerHTML = 'Mode: <strong>Global</strong> (anchor.json)';
+    }
   }
 
-  // Pré-remplir les champs (arrondi minute)
-  (function initInputs(){
-    const d = new Date(); d.setSeconds(0,0);
-    inputOpenAt.value = toDatetimeLocalValue(d);
-    inputOpenTime.value = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    setAdmin(isAdmin());
-    setPaused(isPaused());
-  })();
-
-  function toDatetimeLocalValue(date){
-    const yyyy = date.getFullYear(), mm = pad(date.getMonth()+1), dd = pad(date.getDate());
-    const hh = pad(date.getHours()), mi = pad(date.getMinutes());
-    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
-  }
-
-  // État interne
-  let anchorMs = getAnchorMs();
-  let frozenElapsed = null; // si pause: on mémorise l'elapsed au moment du freeze
-
+  // ====== Rendu timer ======
   function nextAfter(startMs, stepMs, nowMs){
     if (nowMs < startMs) return startMs;
     const k = Math.floor((nowMs - startMs) / stepMs) + 1;
@@ -250,9 +252,8 @@
   function update(){
     const now = Date.now();
 
-    // calcul elapsed (sec) selon pause ou pas
     let elapsed;
-    if (isPaused()){
+    if (paused){
       if (frozenElapsed === null){
         frozenElapsed = (((now - anchorMs)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
       }
@@ -262,101 +263,135 @@
       elapsed = (((now - anchorMs)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
     }
 
-    // Phase: [0, OPEN_SEC) -> OPEN ; [OPEN_SEC, CYCLE_SEC) -> CLOSED
     const isOpen  = elapsed < OPEN_SEC;
     const remain  = isOpen ? (OPEN_SEC - elapsed) : (CYCLE_SEC - elapsed);
 
-    // Horloge + textes
     elClock.textContent = fmt(remain);
     if (isOpen) {
-      elStatus.textContent = isPaused() ? 'Hangar Open (Paused)' : 'Hangar Open';
+      elStatus.textContent = paused ? 'Hangar Open (Paused)' : 'Hangar Open';
       elStatus.className = 'status open';
       elSub.textContent = 'Time until next change (Close): ' + fmt(remain);
     } else {
-      elStatus.textContent = isPaused() ? 'Hangar Closed (Paused)' : 'Hangar Closed';
+      elStatus.textContent = paused ? 'Hangar Closed (Paused)' : 'Hangar Closed';
       elStatus.className = 'status closed';
       elSub.textContent = 'Time until next change (Open): ' + fmt(remain);
     }
 
-    // ====== LED “défilement” ======
+    // LEDs
     const phaseSec = isOpen ? OPEN_SEC : CLOSED_SEC;
-    const progress = remain / phaseSec; // 1 -> 0 sur la phase
+    const progress = remain / phaseSec; // 1 -> 0
     let greenCount;
     if (isOpen) {
-      greenCount = Math.ceil(progress * DOTS_COUNT); // 1.0 -> 5 verts ; ... ; 0 -> 0
+      greenCount = Math.ceil(progress * DOTS_COUNT); // vert → rouge
     } else {
-      greenCount = DOTS_COUNT - Math.ceil(progress * DOTS_COUNT); // 1.0 -> 0 verts ; ... ; 0 -> 5
+      greenCount = DOTS_COUNT - Math.ceil(progress * DOTS_COUNT); // rouge → vert
     }
     greenCount = Math.max(0, Math.min(DOTS_COUNT, greenCount));
     for (let i = 0; i < DOTS_COUNT; i++) {
-      elDots[i].className = 'dot ' + (i < greenCount ? 'g' : 'r');
+      document.getElementById('dots').children[i].className = 'dot ' + (i < greenCount ? 'g' : 'r');
     }
 
-    // ====== Prochaines transitions ======
+    // Prochaines transitions (toujours selon l'ancre en cours)
     const nextClose = nextAfter(anchorMs + OPEN_SEC*1000, CYCLE_SEC*1000, now);
     const nextOpen  = nextAfter(anchorMs, CYCLE_SEC*1000, now);
     elNext.textContent = `Next close: ${pretty(nextClose)} • Next open: ${pretty(nextOpen)}`;
   }
 
-  // --- Login modal ---
-  loginBtn.onclick = () => {
-    if(isAdmin()){ setAdmin(false); }
-    else { modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }
-  };
-  doLoginBtn.onclick = () => {
-    if(pwdInput.value === ADMIN_PASSWORD){ setAdmin(true); modal.style.display='none'; }
-    else { alert('Mot de passe incorrect'); }
-  };
-  closeModal.onclick = () => { modal.style.display='none'; };
+  // ====== Admin : interactions ======
+  // Remplir le datetime avec "maintenant" (arrondi minute)
+  (function initPicker(){
+    const d = new Date(); d.setSeconds(0,0);
+    inputOpenAt.value = toDatetimeLocalValue(d);
+  })();
 
-  // --- Admin actions ---
-  // A) Ouverture "maintenant"
-  document.getElementById('openNow').onclick   = () => { if(!isAdmin()) return; anchorMs = Date.now(); setAnchorMs(anchorMs); update(); };
-  // B) Début de fermeture "maintenant" (ça veut dire que l'ouverture vient de finir)
-  document.getElementById('closedNow').onclick = () => { if(!isAdmin()) return; anchorMs = Date.now() - OPEN_SEC*1000; setAnchorMs(anchorMs); update(); };
-  // C1) Date + heure choisies
-  document.getElementById('setFromPicker').onclick = () => {
+  function toDatetimeLocalValue(date){
+    const yyyy = date.getFullYear(), mm = pad(date.getMonth()+1), dd = pad(date.getDate());
+    const hh = pad(date.getHours()), mi = pad(date.getMinutes());
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+  }
+
+  // Tester localement (sans publier)
+  document.getElementById('setLocal').onclick = () => {
     if(!isAdmin()) return;
-    const val = inputOpenAt.value; // “YYYY-MM-DDTHH:MM” local
+    const val = inputOpenAt.value; // "YYYY-MM-DDTHH:MM" local
     if(!val){ alert('Choisis une date/heure.'); return; }
     const picked = new Date(val);
     if (isNaN(picked.getTime())) { alert('Date/heure invalide.'); return; }
-    anchorMs = picked.getTime();          // début d'OUVERTURE
-    setAnchorMs(anchorMs);
-    update();
-  };
-  // C2) Juste une heure (HH:MM). On prend la DERNIÈRE occurrence (aujourd'hui si passé, sinon hier)
-  document.getElementById('setFromTimeDaily').onclick = () => {
-    if(!isAdmin()) return;
-    const t = inputOpenTime.value; // "HH:MM"
-    if(!t){ alert('Indique une heure HH:MM.'); return; }
-    const [hh, mm] = t.split(':').map(Number);
-    if(Number.isNaN(hh) || Number.isNaN(mm)){ alert('Heure invalide.'); return; }
-    const now = new Date();
-    const cand = new Date(now);
-    cand.setHours(hh, mm, 0, 0);
-    if (cand.getTime() > now.getTime()) {
-      // Si l'heure n'est pas encore passée aujourd'hui, on prend hier
-      cand.setDate(cand.getDate() - 1);
-    }
-    anchorMs = cand.getTime();
-    setAnchorMs(anchorMs);
+    setLocalAnchorMs(picked.getTime());
+    setPausedLocal(false);
+    recomputeModeAndAnchor();
     update();
   };
 
-  document.getElementById('resetAnchor').onclick = () => { if(!isAdmin()) return; resetAnchor(); anchorMs = getAnchorMs(); update(); };
-  document.getElementById('logout').onclick = () => { setAdmin(false); };
-
+  // Pause (locale, pour tester / figer l'état)
   btnTogglePause.onclick = () => {
     if(!isAdmin()) return;
-    setPaused(!isPaused());
-    frozenElapsed = null; // recalculer proprement si on sort de pause
+    if(useLocal){
+      setPausedLocal(!isPausedLocal());
+      paused = isPausedLocal();
+    }else{
+      // en mode Global, la pause affichée vient d'anchor.json (lecture seule)
+      alert('La pause globale se règle via anchor.json (champ "paused": true/false). Active un test local pour figer ici.');
+      return;
+    }
+    frozenElapsed = null;
     update();
   };
 
-  // Tick
-  setInterval(update, 1000);
-  update();
+  // Télécharger anchor.json (pour publier sur le repo → effet global)
+  document.getElementById('downloadAnchor').onclick = () => {
+    if(!isAdmin()) return;
+    // Base sur le champ choisi (si pas de test local actif, on prend la valeur saisie)
+    const val = inputOpenAt.value;
+    const picked = val ? new Date(val) : null;
+    const iso = picked && !isNaN(picked.getTime()) ? new Date(picked.getTime()-picked.getTimezoneOffset()*60000).toISOString().replace('.000Z','Z') : new Date(getGlobalAnchorMs()).toISOString();
+    const json = JSON.stringify({ anchor_iso: iso, manual_offset_seconds: 0, paused: false }, null, 2);
+    const blob = new Blob([json], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'anchor.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  // Copier anchor.json dans le presse-papier
+  document.getElementById('copyAnchor').onclick = async () => {
+    if(!isAdmin()) return;
+    const val = inputOpenAt.value;
+    const picked = val ? new Date(val) : null;
+    const iso = picked && !isNaN(picked.getTime()) ? new Date(picked.getTime()-picked.getTimezoneOffset()*60000).toISOString().replace('.000Z','Z') : new Date(getGlobalAnchorMs()).toISOString();
+    const json = JSON.stringify({ anchor_iso: iso, manual_offset_seconds: 0, paused: false }, null, 2);
+    try{ await navigator.clipboard.writeText(json); alert('anchor.json copié !\nSur GitHub : Add file → Create new file → nom: anchor.json → colle → Commit.'); }
+    catch(e){ alert('Impossible de copier automatiquement. Utilise le bouton “Télécharger”.'); }
+  };
+
+  // Recharger la config globale depuis anchor.json (après ton commit)
+  document.getElementById('reloadGlobal').onclick = async () => {
+    if(!isAdmin()) return;
+    // on supprime l'override local pour repasser en Global, puis on recharge anchor.json
+    setLocalAnchorMs(null);
+    await loadGlobalConfig();
+    recomputeModeAndAnchor();
+    update();
+  };
+
+  // Logout (cache l’admin)
+  document.getElementById('logout').onclick = () => { setAdmin(false); };
+
+  // ====== Login modal ======
+  loginBtn.onclick = () => { if(isAdmin()) { setAdmin(false); } else { modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } };
+  doLoginBtn.onclick = () => { if(pwdInput.value === ADMIN_PASSWORD){ setAdmin(true); modal.style.display='none'; } else { alert('Mot de passe incorrect'); } };
+  closeModal.onclick = () => { modal.style.display='none'; };
+
+  // ====== Initialisation ======
+  (async function init(){
+    setAdmin(isAdmin());
+    setPausedLocal(isPausedLocal()); // texte du bouton
+    await loadGlobalConfig();
+    recomputeModeAndAnchor();
+    setInterval(update, 1000);
+    update();
+  })();
 </script>
 </body>
 </html>
