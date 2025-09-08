@@ -12,109 +12,67 @@
     --panel-border:rgba(255,255,255,.08);
     --text:#ffffff;
     --muted:#cbd5e1;
-
-    /* Jaune (identité) */
-    --accent:#fbbf24;
-    --accent-2:#fde047;
-
-    /* Status */
-    --ok:#22c55e;        /* vert */
+    --ok:#22c55e;
     --danger:#ef4444;
+    --accent:#fbbf24; --accent-2:#fde047;
     --shadow:rgba(0,0,0,.45);
   }
-
-  *{box-sizing:border-box}
-  html,body{margin:0;padding:0}
+  *{box-sizing:border-box} html,body{margin:0;padding:0}
   body{
-    font:16px/1.55 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-    color:var(--text);
+    font:16px/1.55 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--text);
     background:
       radial-gradient(80vw 60vh at 70% -20%, rgba(253,224,71,.06), transparent 60%),
       radial-gradient(70vw 50vh at -10% 0%, rgba(251,191,36,.06), transparent 60%),
       var(--bg) url('https://images.unsplash.com/photo-1517817748496-62bc3047b9ff?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat fixed;
     min-height:100vh;
   }
-  /* Logo watermark */
-  .wm{
-    position:fixed; inset:0; pointer-events:none; z-index:0;
-    background:url('/assets/mammon.png') center 35% / min(80vmin,900px) no-repeat;
-    opacity:.09; filter: drop-shadow(0 0 18px rgba(0,0,0,.6));
-  }
+  .wm{position:fixed; inset:0; pointer-events:none; z-index:0; background:url('/assets/mammon.png') center 35% / min(80vmin,900px) no-repeat; opacity:.09; filter: drop-shadow(0 0 18px rgba(0,0,0,.6))}
   .overlay{position:relative; z-index:1; background:linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.35)); min-height:100vh;}
   .wrap{max-width:980px; margin:0 auto; padding:18px 18px 60px;}
 
-  /* Header */
   header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 16px}
   .brand{display:flex; align-items:center; gap:10px}
   .brand-logo{width:28px; height:28px; background:url('/assets/mammon.png') center/contain no-repeat; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5))}
   .brand-title{font-weight:900; letter-spacing:.3px}
-  .badge{
-    font-size:11px; font-weight:900; padding:4px 8px; border-radius:999px;
-    background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111;
-  }
+  .badge{font-size:11px; font-weight:900; padding:4px 8px; border-radius:999px; background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111;}
   .header-right{display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end}
 
-  /* MINI bannière verte (discrète) */
-  .mini-badge{
-    font-size:12px; line-height:1;
-    color:var(--ok);
-    background:rgba(34,197,94,.12);
-    border:1px solid rgba(34,197,94,.45);
-    padding:6px 10px;
-    border-radius:999px;
-    white-space:nowrap;
-  }
-
-  .chip{
-    border:1px solid var(--panel-border); background:#0f172a; color:#fff;
-    padding:6px 10px; border-radius:12px; cursor:pointer;
-  }
+  /* mini badge patch */
+  .mini-badge{font-size:12px; line-height:1; color:var(--ok); background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.45); padding:6px 10px; border-radius:999px; white-space:nowrap}
+  .chip{border:1px solid var(--panel-border); background:#0f172a; color:#fff; padding:6px 10px; border-radius:12px; cursor:pointer}
   .chip:hover{border-color:#334155}
 
-  /* Panel */
-  .panel{
-    background:var(--panel); border:1px solid var(--panel-border);
-    border-radius:16px; padding:18px;
-    box-shadow:0 12px 30px var(--shadow); backdrop-filter: blur(6px);
-  }
-
-  /* Timer */
+  .panel{background:var(--panel); border:1px solid var(--panel-border); border-radius:16px; padding:18px; box-shadow:0 12px 30px var(--shadow); backdrop-filter: blur(6px)}
   h1{margin:6px 0 10px; font-size:30px; font-weight:900; text-shadow:0 1px 2px rgba(0,0,0,.35)}
   .clock{font:42px/1.1 ui-monospace,Menlo,Consolas,monospace; margin:6px 0 10px}
   .status{margin:8px 0 2px; font-weight:900; letter-spacing:.3px}
-  .status.open{color:var(--ok)}
-  .status.closed{color:var(--danger)}
+  .status.open{color:var(--ok)} .status.closed{color:var(--danger)}
   .sub{opacity:.95}
   .row{display:flex; gap:10px; justify-content:center; margin:12px 0 8px}
-  .led{
-    width:22px; height:22px; border-radius:7px;
-    border:1px solid rgba(0,0,0,.6);
-    background:#0b1323;
-    box-shadow: inset 0 0 12px rgba(0,0,0,.6), 0 0 12px rgba(0,0,0,.25);
-  }
+  .led{width:22px; height:22px; border-radius:7px; border:1px solid rgba(0,0,0,.6); background:#0b1323; box-shadow: inset 0 0 12px rgba(0,0,0,.6), 0 0 12px rgba(0,0,0,.25)}
   .led.g{ background:var(--ok); box-shadow: inset 0 0 10px rgba(0,0,0,.45), 0 0 16px rgba(34,197,94,.45) }
   .led.r{ background:var(--danger); box-shadow: inset 0 0 10px rgba(0,0,0,.45), 0 0 14px rgba(239,68,68,.35) }
-
   .meta{margin-top:10px; font-size:12px; opacity:.9}
   .next{margin-top:12px; font-size:13px; opacity:.96}
 
-  /* Admin */
-  .admin{display:none; margin-top:16px; gap:10px; flex-direction:column}
-  .admin-row{display:flex; gap:8px; flex-wrap:wrap; justify-content:center; align-items:center}
-  .btn{padding:9px 12px; border-radius:12px; border:1px solid var(--panel-border); background:#0f172a; color:#fff; cursor:pointer;}
-  .btn.primary{ background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111; border-color:transparent; font-weight:900 }
-  .btn:hover{ border-color:#334155 }
-  .admin input[type="time"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
+  /* footer nav + privacy */
+  .footer-nav{margin-top:22px; padding-top:14px; border-top:1px solid rgba(255,255,255,.08); display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:center; font-size:14px}
+  .footer-nav a{color:#e5e7eb; text-decoration:none; border:1px solid rgba(255,255,255,.12); padding:6px 10px; border-radius:10px}
+  .footer-nav a:hover{border-color:#334155}
+  .footer-note{margin-top:8px; text-align:center; opacity:.7; font-size:12px}
 
-  /* Modal */
-  .modal{position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:20px; z-index:10}
-  .modal .box{background:#0f1220; border:1px solid var(--panel-border); border-radius:12px; padding:16px; width:100%; max-width:360px}
-  .modal h3{margin:0 0 10px; font-size:18px}
-  .field{display:flex; gap:8px}
-  .field input{flex:1; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
-  .actions{display:flex; gap:8px; margin-top:10px; justify-content:flex-end}
+  .privacy{display:none; margin-top:16px}
+  .privacy .box{background:var(--panel); border:1px solid var(--panel-border); border-radius:16px; padding:16px; box-shadow:0 12px 30px var(--shadow)}
+  .privacy h2{margin:0 0 10px; font-size:20px; font-weight:900}
+  .privacy h3{margin:16px 0 6px; font-size:16px; font-weight:800}
+  .privacy p, .privacy li{color:#dbeafe}
+  .btn{padding:9px 12px; border-radius:12px; border:1px solid var(--panel-border); background:#0f172a; color:#fff; cursor:pointer}
+  .btn.primary{background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111; border-color:transparent; font-weight:900}
 
-  footer{margin-top:22px; padding-top:12px; font-size:12px; opacity:.7; text-align:center}
+  /* bouton Privacy en bas */
+  .pp-cta-wrap{margin:16px 0; display:flex; justify-content:center}
+  .pp-cta{padding:9px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:#0f172a; color:#fff; text-decoration:none}
+  .pp-cta:hover{border-color:#334155}
 </style>
 </head>
 <body>
@@ -129,9 +87,7 @@
         <div class="brand-title">CZ Timers</div>
         <span class="badge">LIVE</span>
       </div>
-
       <div class="header-right">
-        <!-- MINI bannière verte (discrète) -->
         <span class="mini-badge" id="patchBadge" title="Star Citizen patch">
           Updated for Star Citizen Patch 4.3.0-LIVE (Hotfix 10188864)
         </span>
@@ -155,12 +111,12 @@
       <div class="meta" id="modeMeta">Config globale chargée.</div>
 
       <!-- Admin -->
-      <div class="admin" id="adminPanel">
-        <div class="admin-row">
+      <div class="admin" id="adminPanel" style="display:none">
+        <div class="admin-row" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center">
           <label for="openTime">Dernière ouverture (HH:MM) :</label>
           <input type="time" id="openTime" step="60" />
         </div>
-        <div class="admin-row">
+        <div class="admin-row" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:8px">
           <button class="btn primary" id="publishGlobal">Mettre à jour GLOBAL</button>
           <button class="btn" id="togglePauseGlobal">Pause/Reprendre GLOBAL</button>
           <button class="btn" id="reload">Recharger</button>
@@ -170,24 +126,78 @@
       </div>
     </section>
 
-    <footer>© 2025 Mammon — Thème sombre & accent jaune.</footer>
+    <!-- ====== FOOTER NAV ====== -->
+    <nav class="footer-nav">
+      <a href="https://buymeacoffee.com/yourname" target="_blank" rel="noopener">☕ Buy me a coffee</a>
+      <a href="/index.html">Home</a>
+      <a href="/maps.html">Contested Zone Maps</a>
+      <a href="/ships.html">Ships</a>
+      <a href="/how-it-works.html">How it works</a>
+      <span class="mini-badge" title="Referral">Use my Referral Code: <b>STAR-9D45-G3B6</b></span>
+      <a href="#privacy" id="openPP">Privacy Policy</a>
+    </nav>
+
+    <!-- Bouton d'accès rapide à la Privacy Policy -->
+    <div class="pp-cta-wrap">
+      <a href="#privacy" id="ppBtn" class="pp-cta">Privacy Policy</a>
+    </div>
+
+    <!-- ====== PRIVACY POLICY (Updated) ====== -->
+    <section class="privacy" id="privacy">
+      <div class="box">
+        <h2>Privacy Policy</h2>
+        <p><em>Effective Date: September 8, 2025</em></p>
+
+        <p>Welcome to <strong>Contested Zone Timers</strong>. Your privacy matters to us. This Policy explains what we (don’t) collect, how we may use cookies/ads in the future, and your rights.</p>
+
+        <h3>Information We Collect</h3>
+        <p>We do <strong>not</strong> collect, sell, or share personal data. Timer preferences are saved in your browser’s <strong>Local Storage</strong> for convenience. This data stays on your device and is never transmitted to our servers.</p>
+
+        <h3>Cookies &amp; Tracking</h3>
+        <p>We currently do not use cookies. In the future, we may enable cookies or similar technologies to show ads (e.g., Google AdSense, Ezoic). These may process non-identifiable data (e.g., page views) to serve relevant ads. You can control or delete cookies in your browser settings at any time.</p>
+
+        <h3>Third-Party Services (Ads)</h3>
+        <p>If/when ads are enabled, third-party ad networks (e.g., Google AdSense, Ezoic) may use cookies and similar tech to deliver and measure ads. Please review their respective privacy policies for details on their processing.</p>
+
+        <h3>Your Rights</h3>
+        <p>Depending on your location, you may have rights under laws such as <strong>GDPR</strong> (EU/EEA/UK) or <strong>CCPA/CPRA</strong> (California), including access, correction, deletion, objection/restriction, and withdrawing consent (where applicable). Because we do not collect personal data, these rights mainly relate to cookie preferences you control in your browser if/when ads are enabled.</p>
+
+        <h3>Data Retention</h3>
+        <p>We do not maintain user profiles or store personal data. Local Storage data remains on your device until you clear it (e.g., “Clear Site Data” in your browser).</p>
+
+        <h3>Children’s Privacy</h3>
+        <p>This site is for a general audience and does not knowingly collect information from children under 13 (or higher local age threshold).</p>
+
+        <h3>Changes to This Policy</h3>
+        <p>We may update this Policy from time to time. We will post changes here with a new Effective Date. Please check this page periodically.</p>
+
+        <div class="footer-note" style="margin-top:14px">
+          Home • How it works • About • Privacy Policy<br>
+          Executive Hangar Timer, Built by Appieman.<br>
+          <small>Last updated: 08 Sep 2025</small>
+        </div>
+      </div>
+    </section>
+
   </div>
 </div>
 
 <!-- Modal Admin -->
-<div class="modal" id="modal">
-  <div class="box">
-    <h3>Connexion admin</h3>
-    <div class="field">
-      <input type="password" id="pwd" placeholder="Mot de passe admin (Vercel → ADMIN_PASSWORD)" />
+<div class="modal" id="modal" style="display:none">
+  <div class="box" style="background:#0f1220; border:1px solid var(--panel-border); border-radius:12px; padding:16px; width:100%; max-width:360px">
+    <h3 style="margin:0 0 10px; font-size:18px">Connexion admin</h3>
+    <div class="field" style="display:flex; gap:8px">
+      <input type="password" id="pwd" placeholder="Mot de passe admin (Vercel → ADMIN_PASSWORD)" style="flex:1;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff" />
       <button class="btn" id="doLogin">OK</button>
     </div>
-    <div class="actions"><button class="btn" id="closeModal">Fermer</button></div>
+    <div class="actions" style="display:flex; gap:8px; margin-top:10px; justify-content:flex-end">
+      <button class="btn" id="closeModal">Fermer</button>
+    </div>
   </div>
 </div>
 
 <script>
-  /* ===== Réglages ===== */
+  /* ===== Réglages timer ===== */
   const OPEN_MIN=60, CLOSED_MIN=120, DOTS=5;
   const OPEN_SEC=OPEN_MIN*60, CLOSED_SEC=CLOSED_MIN*60, CYCLE_SEC=OPEN_SEC+CLOSED_SEC;
 
@@ -212,6 +222,11 @@
   const doLoginBtn=document.getElementById('doLogin');
   const closeModal=document.getElementById('closeModal');
 
+  /* Footer / Privacy */
+  const openPP=document.getElementById('openPP');
+  const ppBtn=document.getElementById('ppBtn');
+  const ppSection=document.getElementById('privacy');
+
   /* ===== State global (API) ===== */
   let cfg={anchor_iso:'2025-09-07T16:53:00Z', manual_offset_seconds:0, paused:false};
 
@@ -234,14 +249,12 @@
     elStatus.textContent = 'Hangar '+(isOpen?'Open':'Closed') + (cfg.paused?' (Paused)':'');
     elSub.textContent = 'Prochaine transition ('+(isOpen?'fermeture':'ouverture')+') dans '+fmt(remain);
 
-    // LEDs progressives
     const phaseSec=isOpen?OPEN_SEC:CLOSED_SEC;
-    const progress=remain/phaseSec; // 1 -> 0
+    const progress=remain/phaseSec;
     let greenCount = isOpen ? Math.ceil(progress*DOTS) : DOTS - Math.ceil(progress*DOTS);
     greenCount=Math.max(0,Math.min(DOTS,greenCount));
     for(let i=0;i<DOTS;i++) leds[i].className='led '+(i<greenCount?'g':'r');
 
-    // Prochaines transitions
     const nClose=nextAfter(anchorMs()+OPEN_SEC*1000, CYCLE_SEC*1000, now);
     const nOpen =nextAfter(anchorMs(),                CYCLE_SEC*1000, now);
     elNext.textContent = `Prochaine fermeture : ${pretty(nClose)} • Prochaine ouverture : ${pretty(nOpen)}`;
@@ -265,31 +278,38 @@
   closeModal.onclick=()=>{ modal.style.display='none'; };
   btnLogout.onclick=()=> setAdminUI(false);
 
-  /* ===== Admin actions ===== */
   document.getElementById('publishGlobal').onclick= async ()=>{
     if(!isAdmin || !adminPwd){ modal.style.display='flex'; return; }
     const val=inputTime.value.trim(); if(!val) return alert('Indique HH:MM');
     const [hh,mm]=val.split(':').map(Number); if(Number.isNaN(hh)||Number.isNaN(mm)) return alert('Heure invalide');
-
-    // Dernière occurrence locale -> ISO UTC
     const now=new Date(); const d=new Date(now); d.setHours(hh,mm,0,0); if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1);
     const iso=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().replace('.000Z','Z');
-
-    const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({password:adminPwd,anchor_iso:iso,manual_offset_seconds:0,paused:false})});
+    const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:adminPwd,anchor_iso:iso,manual_offset_seconds:0,paused:false})});
     if(!r.ok){ if(r.status===401){ setAdminUI(false); alert('Mot de passe incorrect'); return; } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
     cfg=await r.json(); alert('✅ Mise à jour globale enregistrée'); loadCfg();
   };
 
   document.getElementById('togglePauseGlobal').onclick= async ()=>{
     if(!isAdmin || !adminPwd){ modal.style.display='flex'; return; }
-    const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({password:adminPwd,anchor_iso:cfg.anchor_iso,manual_offset_seconds:cfg.manual_offset_seconds||0,paused:!cfg.paused})});
+    const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:adminPwd,anchor_iso:cfg.anchor_iso,manual_offset_seconds:cfg.manual_offset_seconds||0,paused:!cfg.paused})});
     if(!r.ok){ if(r.status===401){ setAdminUI(false); alert('Mot de passe incorrect'); return; } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
     cfg=await r.json(); render();
   };
 
   document.getElementById('reload').onclick= loadCfg;
+
+  /* ===== Privacy: ouvrir/afficher & hash support ===== */
+  function openPrivacy(){
+    ppSection.style.display='block';
+    ppSection.scrollIntoView({behavior:'smooth'});
+  }
+  openPP.addEventListener('click', (e)=>{ e.preventDefault(); openPrivacy(); });
+  ppBtn.addEventListener('click', (e)=>{ e.preventDefault(); openPrivacy(); });
+
+  if (location.hash === '#privacy') {
+    // si l'utilisateur arrive déjà avec #privacy
+    ppSection.style.display='block';
+  }
 
   /* Go */
   setInterval(render,1000);
