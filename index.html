@@ -68,4 +68,151 @@
 
       <h1>Executive Hangar Timer</h1>
 
-      <div class="
+      <div class="clock" id="clock">--:--:--</div>
+
+      <div class="row" id="dots">
+        <!-- 5 pastilles -->
+        <div class="dot g"></div><div class="dot g"></div><div class="dot r"></div><div class="dot r"></div><div class="dot r"></div>
+      </div>
+
+      <div class="status closed" id="status">Hangar Closed</div>
+      <div class="sub" id="subtitle">Opens in --:--:--</div>
+
+      <!-- Zone admin (affichée seulement après connexion) -->
+      <div class="admin" id="admin">
+        <button class="btn" id="openNow">Open starts now</button>
+        <button class="btn" id="closedNow">Closed starts now</button>
+        <button class="btn" id="resetAnchor">Reset to global anchor</button>
+        <button class="btn" id="logout">Logout</button>
+        <div class="note">Admin only. Anchor is saved locally for everyone’s view.</div>
+      </div>
+
+      <div class="hint">Cycle: 3h Closed → 1h Open (auto). LEDs show remaining fraction of the current phase.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de connexion -->
+<div class="modal" id="modal">
+  <div class="box">
+    <h3>Admin Login</h3>
+    <div class="field">
+      <input type="password" id="pwd" placeholder="Mot de passe admin" />
+      <button class="btn" id="doLogin">OK</button>
+    </div>
+    <div class="actions">
+      <button class="btn" id="closeModal">Fermer</button>
+    </div>
+    <div class="note">Astuce : change le mot de passe dans le code (variable ADMIN_PASSWORD).</div>
+  </div>
+</div>
+
+<script>
+  /***************
+   * PARAMÈTRES
+   ***************/
+  const CLOSED_MIN = 180;             // 3h fermé
+  const OPEN_MIN   = 60;              // 1h ouvert
+  const DOTS_COUNT = 5;               // 5 pastilles
+
+  // ⚓ Ancre globale par défaut (UTC) : début d'un cycle (modifiable)
+  const GLOBAL_ANCHOR_ISO = '2025-09-01T00:00:00Z';
+  const MANUAL_OFFSET_SECONDS = 0;    // petit décalage si besoin (+/- secondes)
+
+  // Connexion simple (client-side seulement : pas sécurisé pour info sensible)
+  const ADMIN_PASSWORD = 'admin123';  // ← CHANGE MOI !
+  const LS_IS_ADMIN = 'eh_is_admin_v1';
+  const LS_ANCHOR   = 'eh_anchor_ms_v1';
+
+  const CYCLE_SEC  = (CLOSED_MIN + OPEN_MIN) * 60;
+  const CLOSED_SEC = CLOSED_MIN * 60;
+
+  // Élts UI
+  const elClock   = document.getElementById('clock');
+  const elStatus  = document.getElementById('status');
+  const elSub     = document.getElementById('subtitle');
+  const elDotsBox = document.getElementById('dots');
+  const elDots    = elDotsBox.children;
+  const elAdmin   = document.getElementById('admin');
+
+  // Modal
+  const modal      = document.getElementById('modal');
+  const loginBtn   = document.getElementById('loginBtn');
+  const doLoginBtn = document.getElementById('doLogin');
+  const closeModal = document.getElementById('closeModal');
+  const pwdInput   = document.getElementById('pwd');
+
+  const pad = n => String(n).padStart(2,'0');
+  const fmt = s => { s=Math.max(0,Math.floor(s)); return `${pad(Math.floor(s/3600))}:${pad(Math.floor((s%3600)/60))}:${pad(s%60)}`; };
+
+  function getGlobalAnchorMs(){ return Date.parse(GLOBAL_ANCHOR_ISO) + MANUAL_OFFSET_SECONDS*1000; }
+  function getAnchorMs(){
+    const saved = localStorage.getItem(LS_ANCHOR);
+    return (saved && /^\d+$/.test(saved)) ? Number(saved) : getGlobalAnchorMs();
+  }
+  function setAnchorMs(ms){ localStorage.setItem(LS_ANCHOR, String(ms)); }
+  function resetAnchor(){ localStorage.removeItem(LS_ANCHOR); }
+
+  let anchorMs = getAnchorMs();
+
+  function update(){
+    const now = Date.now();
+    const elapsed = (((now - anchorMs)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
+    const isOpen  = elapsed >= CLOSED_SEC;
+    const remain  = isOpen ? (CYCLE_SEC - elapsed) : (CLOSED_SEC - elapsed);
+    const phaseSec= isOpen ? OPEN_MIN*60 : CLOSED_MIN*60;
+    const ratio   = remain / phaseSec;
+
+    elClock.textContent = fmt(remain);
+    if(isOpen){
+      elStatus.textContent = 'Hangar Open';
+      elStatus.className = 'status open';
+      elSub.textContent = 'Closes in ' + fmt(remain);
+    }else{
+      elStatus.textContent = 'Hangar Closed';
+      elStatus.className = 'status closed';
+      elSub.textContent = 'Opens in ' + fmt(remain);
+    }
+
+    // Pastilles : allume en vert la fraction restante, sinon rouge
+    const greenCount = Math.max(0, Math.min(DOTS_COUNT, Math.round(ratio * DOTS_COUNT)));
+    for(let i=0;i<DOTS_COUNT;i++){
+      elDots[i].className = 'dot ' + (i < greenCount ? 'g' : 'r');
+    }
+  }
+
+  // --- Admin UI ---
+  function isAdmin(){ return localStorage.getItem(LS_IS_ADMIN) === '1'; }
+  function setAdmin(v){
+    if(v){ localStorage.setItem(LS_IS_ADMIN,'1'); }
+    else { localStorage.removeItem(LS_IS_ADMIN); }
+    elAdmin.style.display = v ? 'flex' : 'none';
+    loginBtn.textContent = v ? 'Admin ✓' : 'Admin Login';
+  }
+
+  // init admin state
+  setAdmin(isAdmin());
+
+  // login modal handlers
+  loginBtn.onclick = () => { if(isAdmin()) { setAdmin(false); } else { modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } };
+  doLoginBtn.onclick = () => {
+    if(pwdInput.value === ADMIN_PASSWORD){
+      setAdmin(true);
+      modal.style.display='none';
+    } else {
+      alert('Mot de passe incorrect');
+    }
+  };
+  closeModal.onclick = () => { modal.style.display='none'; };
+
+  // admin buttons
+  document.getElementById('openNow').onclick   = () => { if(!isAdmin()) return; anchorMs = Date.now() - CLOSED_SEC*1000; setAnchorMs(anchorMs); update(); };
+  document.getElementById('closedNow').onclick = () => { if(!isAdmin()) return; anchorMs = Date.now(); setAnchorMs(anchorMs); update(); };
+  document.getElementById('resetAnchor').onclick = () => { if(!isAdmin()) return; resetAnchor(); anchorMs = getAnchorMs(); update(); };
+  document.getElementById('logout').onclick = () => { setAdmin(false); };
+
+  setInterval(update, 1000);
+  update();
+</script>
+</body>
+</html>
