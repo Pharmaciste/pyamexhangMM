@@ -87,7 +87,7 @@
         <div class="note">Admin only. Anchor is saved locally for everyone’s view.</div>
       </div>
 
-      <div class="hint">Cycle: 3h Closed → 1h Open (auto). LEDs step one-by-one.</div>
+      <div class="hint">Cycle: 2h Closed → 1h Open (auto). LEDs step one-by-one.</div>
     </div>
   </div>
 </div>
@@ -111,20 +111,21 @@
   /***************
    * PARAMÈTRES
    ***************/
-  const CLOSED_MIN = 180;             // 3h fermé
-  const OPEN_MIN   = 60;              // 1h ouvert
+  const OPEN_MIN   = 60;              // 1 h ouvert
+  const CLOSED_MIN = 120;             // 2 h fermé
   const DOTS_COUNT = 5;               // 5 pastilles
 
-  // ⚓ Ancre globale par défaut (UTC) : début d'un cycle (modifiable)
-  const GLOBAL_ANCHOR_ISO = '2025-09-01T00:00:00Z';
-  const MANUAL_OFFSET_SECONDS = 0;    // petit décalage si besoin (+/- secondes)
+  // ⚓ Ancre globale (UTC) = 7 sept. 2025 18:53 (Paris) = 16:53 UTC
+  const GLOBAL_ANCHOR_ISO = '2025-09-07T16:53:00Z';
+  const MANUAL_OFFSET_SECONDS = 0;    // micro-ajustement global (+/- secondes) si besoin
 
-  // Connexion simple (client-side seulement : pas sécurisé pour info sensible)
+  // Connexion simple (client-side)
   const ADMIN_PASSWORD = 'admin123';  // ← CHANGE MOI !
   const LS_IS_ADMIN = 'eh_is_admin_v1';
   const LS_ANCHOR   = 'eh_anchor_ms_v1';
 
-  const CYCLE_SEC  = (CLOSED_MIN + OPEN_MIN) * 60;
+  const CYCLE_SEC  = (OPEN_MIN + CLOSED_MIN) * 60;  // 3 h
+  const OPEN_SEC   = OPEN_MIN * 60;
   const CLOSED_SEC = CLOSED_MIN * 60;
 
   // Élts UI
@@ -158,12 +159,14 @@
   function update(){
     const now = Date.now();
     const elapsed = (((now - anchorMs)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
-    const isOpen  = elapsed >= CLOSED_SEC;
-    const remain  = isOpen ? (CYCLE_SEC - elapsed) : (CLOSED_SEC - elapsed);
 
-    // horloge + textes
-    const phaseSec = isOpen ? OPEN_MIN*60 : CLOSED_MIN*60;
-    const progress = remain / phaseSec; // 1 -> 0 pendant la phase
+    // Phase: de 0 à 3600s -> OUVERT ; de 3600s à 10800s -> FERMÉ
+    const isOpen  = elapsed < OPEN_SEC;
+    const remain  = isOpen ? (OPEN_SEC - elapsed) : (CYCLE_SEC - elapsed);
+
+    // Horloge + textes
+    const phaseSec = isOpen ? OPEN_SEC : CLOSED_SEC;
+    const progress = remain / phaseSec; // 1 -> 0 sur la phase
 
     elClock.textContent = fmt(remain);
     if (isOpen) {
@@ -176,7 +179,7 @@
       elSub.textContent = 'Opens in ' + fmt(remain);
     }
 
-    // ====== LOGIQUE LED “défilement” ======
+    // ====== LED “défilement” synchronisées ======
     // Ouvert  : commence tout VERT, puis une à une devient ROUGE
     // Fermé   : commence tout ROUGE, puis une à une devient VERTE
     let greenCount;
@@ -219,8 +222,8 @@
   closeModal.onclick = () => { modal.style.display='none'; };
 
   // admin buttons
-  document.getElementById('openNow').onclick   = () => { if(!isAdmin()) return; anchorMs = Date.now() - CLOSED_SEC*1000; setAnchorMs(anchorMs); update(); };
-  document.getElementById('closedNow').onclick = () => { if(!isAdmin()) return; anchorMs = Date.now(); setAnchorMs(anchorMs); update(); };
+  document.getElementById('openNow').onclick   = () => { if(!isAdmin()) return; anchorMs = Date.now(); /* début d'ouverture = maintenant */ setAnchorMs(anchorMs); update(); };
+  document.getElementById('closedNow').onclick = () => { if(!isAdmin()) return; anchorMs = Date.now() - OPEN_SEC*1000; /* début fermeture = maintenant => ouverture finie */ setAnchorMs(anchorMs); update(); };
   document.getElementById('resetAnchor').onclick = () => { if(!isAdmin()) return; resetAnchor(); anchorMs = getAnchorMs(); update(); };
   document.getElementById('logout').onclick = () => { setAdmin(false); };
 
