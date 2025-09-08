@@ -84,50 +84,95 @@
     Fan-made / Non affilié à CIG. Crédits sur chaque page.
   </footer>
 
-  <script>
-    // --- Timer cyclique 3h fermé + 1h ouvert, LED verte/orange/rouge selon le temps restant.
-    const closedMinutes = 180; // 3h
-    const openMinutes   = 60;  // 1h
-    const cycleSeconds  = (closedMinutes + openMinutes) * 60;
-    const closedSeconds = closedMinutes * 60;
+<script>
+  // === TIMER CYCLIQUE AUTO ===
+  // Réglages du cycle
+  const CLOSED_MIN = 180; // 3h fermé
+  const OPEN_MIN   = 60;  // 1h ouvert
 
-    const elTime  = document.querySelector('#time');
-    const elPhase = document.querySelector('#phase');
-    const elLed   = document.querySelector('#led');
-    let base = Date.now(); // recalibrable
+  // ⚓ ANCRE: début connu d'un cycle (UTC). Change-la si besoin.
+  // Exemple: 1 sept. 2025, 00:00:00 UTC
+  const ANCHOR_ISO_UTC = '2025-09-01T00:00:00Z';
 
-    const pad = n => String(n).padStart(2,'0');
-    const fmt = sec => {
-      sec = Math.max(0, Math.floor(sec));
-      const h = pad(Math.floor(sec/3600));
-      const m = pad(Math.floor((sec%3600)/60));
-      const s = pad(sec%60);
-      return `${h}:${m}:${s}`;
-    };
-    const ledClassFromRatio = r => r > 0.66 ? 'green' : r > 0.33 ? 'orange' : 'red';
+  // (Optionnel) Décaler l'ancre si tu constates 1 min d'écart IRL (en secondes)
+  const MANUAL_OFFSET_SECONDS = 0; // ex: 60 pour +1min, -60 pour -1min
 
-    function update(){
-      const now = Date.now();
-      const elapsed   = (((now - base)/1000) % cycleSeconds + cycleSeconds) % cycleSeconds;
-      const isOpen    = elapsed >= closedSeconds;
-      const remaining = isOpen ? (cycleSeconds - elapsed) : (closedSeconds - elapsed);
-      const ratio     = isOpen ? remaining / (openMinutes*60) : remaining / (closedMinutes*60);
+  // Persistance locale: si tu recalibres manuellement, on garde la base
+  const LS_KEY = 'czt_base_ms_v1';
 
-      elTime.textContent = fmt(remaining);
-      elPhase.textContent = isOpen ? 'OUVERT' : 'FERMÉ';
-      elPhase.className = 'badge ' + (isOpen ? 'open' : 'closed');
+  const cycleSeconds  = (CLOSED_MIN + OPEN_MIN) * 60;
+  const closedSeconds = CLOSED_MIN * 60;
 
-      elLed.classList.remove('green','orange','red');
-      elLed.classList.add(ledClassFromRatio(ratio));
-    }
+  const elTime  = document.querySelector('#time');
+  const elPhase = document.querySelector('#phase');
+  const elLed   = document.querySelector('#led');
 
-    // Recalibrage
-    function recalOpen(){ base = Date.now() - closedSeconds*1000; update(); }
-    function recalClosed(){ base = Date.now(); update(); }
-    window.recalOpen = recalOpen; window.recalClosed = recalClosed;
+  // Utilitaires
+  const pad = n => String(n).padStart(2,'0');
+  const fmt = sec => {
+    sec = Math.max(0, Math.floor(sec));
+    const h = pad(Math.floor(sec/3600));
+    const m = pad(Math.floor((sec%3600)/60));
+    const s = pad(sec%60);
+    return `${h}:${m}:${s}`;
+  };
+  const ledClassFromRatio = r => r > 0.66 ? 'green' : r > 0.33 ? 'orange' : 'red';
 
-    setInterval(update, 1000);
+  // Détermine la "base" du cycle :
+  // 1) si l'utilisateur a recalibré → on garde cette base (localStorage)
+  // 2) sinon → on utilise l'ANCRE UTC (début d'un cycle global, identique pour tout le monde)
+  function getBaseMs() {
+    const saved = localStorage.getItem(LS_KEY);
+    if (saved && /^\d+$/.test(saved)) return Number(saved);
+    const anchorMs = Date.parse(ANCHOR_ISO_UTC) + MANUAL_OFFSET_SECONDS*1000;
+    return anchorMs;
+  }
+
+  let base = getBaseMs();
+
+  function setBaseMs(ms) {
+    base = ms;
+    localStorage.setItem(LS_KEY, String(ms));
+  }
+
+  function clearBase() {
+    localStorage.removeItem(LS_KEY);
+    base = getBaseMs();
+  }
+
+  function update(){
+    const now = Date.now();
+    const elapsed = (((now - base)/1000) % cycleSeconds + cycleSeconds) % cycleSeconds;
+    const isOpen  = elapsed >= closedSeconds;
+    const remain  = isOpen ? (cycleSeconds - elapsed) : (closedSeconds - elapsed);
+    const ratio   = isOpen ? remain / (OPEN_MIN*60) : remain / (CLOSED_MIN*60);
+
+    elTime.textContent   = fmt(remain);
+    elPhase.textContent  = isOpen ? 'OUVERT' : 'FERMÉ';
+    elPhase.className    = 'badge ' + (isOpen ? 'open' : 'closed');
+    elLed.classList.remove('green','orange','red');
+    elLed.classList.add(ledClassFromRatio(ratio));
+  }
+
+  // --- Recalibrages manuels (gardés en localStorage)
+  function recalOpen(){  // On force "début de phase ouverte = maintenant"
+    setBaseMs(Date.now() - closedSeconds*1000);
     update();
-  </script>
+  }
+  function recalClosed(){ // On force "début de phase fermée = maintenant"
+    setBaseMs(Date.now());
+    update();
+  }
+  // Expose aux boutons existants
+  window.recalOpen = recalOpen;
+  window.recalClosed = recalClosed;
+
+  // (Optionnel) Bouton pour revenir à l'ancre globale (si tu en ajoutes un)
+  // window.resetToAnchor = () => { clearBase(); update(); };
+
+  setInterval(update, 1000);
+  update();
+</script>
+
 </body>
 </html>
