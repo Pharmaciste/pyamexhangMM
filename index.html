@@ -44,13 +44,12 @@
   .meta{margin-top:10px; font-size:12px; opacity:.9}
   .next{margin-top:12px; font-size:13px; opacity:.96}
 
-  /* CTA Privacy */
+  /* Privacy (toggle) */
   .pp-cta-wrap{margin:22px 0 8px; display:flex; justify-content:center}
   .pp-cta{padding:9px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:#0f172a; color:#fff; text-decoration:none}
   .pp-cta:hover{border-color:#334155}
   .privacy{display:none; margin-top:16px}
   .privacy .box{background:var(--panel); border:1px solid var(--panel-border); border-radius:16px; padding:16px; box-shadow:0 12px 30px var(--shadow)}
-  .privacy h2{margin:0 0 10px; font-size:20px; font-weight:900}
 
   /* Admin (caché derrière mot de passe) */
   .btn{padding:9px 12px; border-radius:12px; border:1px solid var(--panel-border); background:#0f172a; color:#fff; cursor:pointer}
@@ -94,14 +93,14 @@
       <div class="sub" id="subtitle">Prochaine transition dans --:--:--</div>
 
       <div class="next" id="nextTimes">Prochaine fermeture : — • Prochaine ouverture : —</div>
-      <div class="meta" id="modeMeta">Ancre initiale : <b>prochaine ouverture à 16:28 (heure locale)</b>. Modifications via Admin (mot de passe).</div>
+      <div class="meta" id="modeMeta">Ancre initiale = <b>prochaine ouverture à 16:28 (heure locale)</b>. Modifiable via Admin.</div>
 
       <!-- Admin (après login) -->
       <div class="admin" id="adminPanel">
         <label for="openTime"><strong>Dernière ouverture (HH:MM)</strong> :</label>
         <input type="time" id="openTime" step="60" />
         <button class="btn primary" id="publishGlobal">Mettre à jour GLOBAL</button>
-        <button class="btn" id="togglePauseGlobal">Pause/Reprendre GLOBAL</button>
+        <button class="btn" id="togglePauseGlobal">Pause/Reprendre</button>
         <button class="btn" id="reload">Recharger config</button>
         <button class="btn" id="logout">Se déconnecter</button>
       </div>
@@ -114,7 +113,7 @@
     <section class="privacy" id="privacy" aria-hidden="true">
       <div class="box">
         <h2>Privacy Policy</h2>
-        <p>Nous ne collectons pas de données personnelles. Vos préférences sont stockées en <strong>Local Storage</strong> (sur votre appareil) si l’API n’est pas disponible.</p>
+        <p>Nous ne collectons pas de données personnelles. Préférences stockées en Local Storage si l’API n’est pas disponible.</p>
       </div>
     </section>
 
@@ -178,18 +177,19 @@
   const anchorMs=()=>Date.parse(cfg.anchor_iso)+(cfg.manual_offset_seconds||0)*1000;
   const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
 
-  /* ===== LED logic ===== */
-  function greenCountOpen(remainSec){
-    // Pendant l’ouverture : 5→0 LED (12 min chacune), puis 5 min “black” (0 LED)
-    if (remainSec <= 5*60) return 0;
-    const eff = Math.min(60*60, remainSec - 5*60);
-    return Math.max(0, Math.min(DOTS, Math.ceil(eff / (12*60))));
-  }
+  /* ===== LEDs ===== */
+  // Fermé : 0→5 verts, ~24 min/LED (la 5ème juste avant l’ouverture)
   function greenCountClosed(remainSec){
-    // Fermé : 0→5 LED (≈24 min chacune)
-    const seg = CLOSED_SEC / DOTS;
-    let cnt = DOTS - Math.ceil(remainSec / seg);
+    const seg = CLOSED_SEC / DOTS;                 // ~1440.2 s
+    const closedElapsed = CLOSED_SEC - remainSec;  // progresse de 0 -> CLOSED_SEC
+    let cnt = Math.floor(closedElapsed / seg);     // 0..5 (5 au tout dernier instant)
     return Math.max(0, Math.min(DOTS, cnt));
+  }
+  // Ouvert : 5→0 verts (12 min/LED), puis 5 min “black” (0 LED mais ouvert)
+  function greenCountOpen(remainSec){
+    if (remainSec <= 5*60) return 0;               // “black” final
+    const eff = Math.min(60*60, remainSec - 5*60); // secondes LED-actives
+    return Math.max(0, Math.min(DOTS, Math.ceil(eff / (12*60))));
   }
   function updateLeds(isOpen, remain){
     const green = isOpen ? greenCountOpen(remain) : greenCountClosed(remain);
@@ -233,14 +233,13 @@
     const now=new Date();
     const next=new Date(now);
     next.setHours(16,28,0,0);
-    if(next.getTime() <= now.getTime()) next.setDate(next.getDate()+1); // si 16:28 est déjà passé, on prend demain
-    // On pose l’ancre (= instant d’ouverture) à cette prochaine 16:28 locale
-    cfg.anchor_iso = toISO(next.getTime());
+    if(next.getTime() <= now.getTime()) next.setDate(next.getDate()+1); // si 16:28 est passé, on prend demain
+    cfg.anchor_iso = toISO(next.getTime());  // l’ancre est un instant d’OUVERTURE
     cfg.manual_offset_seconds = 0;
-    elMode.textContent = 'Ancre initiale : prochaine ouverture à 16:28 (locale) -> '+pretty(next.getTime());
+    elMode.textContent = 'Ancre initiale : prochaine ouverture à 16:28 locale ('+ pretty(next.getTime()) +')';
   }
 
-  /* ===== Admin session (cachée, mot de passe) ===== */
+  /* ===== Admin (login caché) ===== */
   function setAdminUI(v){ isAdmin=v; adminPanel.style.display=v?'flex':'none'; if(!v) adminPwd=null; }
   const secretLogo = document.getElementById('secretLogo');
   secretLogo.addEventListener('dblclick', ()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); });
@@ -255,7 +254,7 @@
     const [hh,mm]=hhmm.split(':').map(Number);
     const now=new Date();
     const d=new Date(now); d.setHours(hh,mm,0,0);
-    if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1); // si futur → on prend hier
+    if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1); // si futur -> hier (dernière ouverture passée)
     return toISO(d.getTime());
   }
 
@@ -312,13 +311,13 @@
   ppBtn.addEventListener('click', togglePrivacy);
   if (location.hash === '#privacy') setPrivacyVisibility(true);
 
-  /* ===== Tick ===== */
+  /* ===== Tick & Go ===== */
   setInterval(()=>{ if(!cfg.paused) render(); },1000);
 
-  /* Go : ancre = PROCHAINE ouverture à 16:28 locale */
+  // Ancre = PROCHAINE ouverture à 16:28 locale
   initAnchorToNext1628();
-  // Préremplir l’input admin à 16:28 pour les ajustements manuels
-  document.getElementById('openTime').value = '16:28';
+  // Préremplir l’input admin (utile si tu veux pousser une “dernière ouverture” précise)
+  inputTime.value='16:28';
   render();
 </script>
 </body>
