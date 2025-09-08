@@ -155,31 +155,51 @@
 
   let anchorMs = getAnchorMs();
 
+ <script>
+  // ... garde le reste tel quel (const CLOSED_MIN, OPEN_MIN, etc.)
+
   function update(){
     const now = Date.now();
     const elapsed = (((now - anchorMs)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
     const isOpen  = elapsed >= CLOSED_SEC;
     const remain  = isOpen ? (CYCLE_SEC - elapsed) : (CLOSED_SEC - elapsed);
-    const phaseSec= isOpen ? OPEN_MIN*60 : CLOSED_MIN*60;
-    const ratio   = remain / phaseSec;
 
-    elClock.textContent = fmt(remain);
-    if(isOpen){
-      elStatus.textContent = 'Hangar Open';
-      elStatus.className = 'status open';
-      elSub.textContent = 'Closes in ' + fmt(remain);
-    }else{
-      elStatus.textContent = 'Hangar Closed';
-      elStatus.className = 'status closed';
-      elSub.textContent = 'Opens in ' + fmt(remain);
+    // horloge + textes
+    const phaseSec = isOpen ? OPEN_MIN*60 : CLOSED_MIN*60;
+    const progress = remain / phaseSec; // 1 -> 0 pendant la phase
+
+    clock.textContent = fmt(remain);
+    if (isOpen) {
+      status.textContent = 'Hangar Open';
+      status.className = 'status open';
+      subtitle.textContent = 'Closes in ' + fmt(remain);
+    } else {
+      status.textContent = 'Hangar Closed';
+      status.className = 'status closed';
+      subtitle.textContent = 'Opens in ' + fmt(remain);
     }
 
-    // Pastilles : allume en vert la fraction restante, sinon rouge
-    const greenCount = Math.max(0, Math.min(DOTS_COUNT, Math.round(ratio * DOTS_COUNT)));
-    for(let i=0;i<DOTS_COUNT;i++){
-      elDots[i].className = 'dot ' + (i < greenCount ? 'g' : 'r');
+    // ====== NOUVELLE LOGIQUE LED ======
+    // Ouvert : commence tout vert puis passe au rouge (diminue)
+    // Fermé  : commence tout rouge puis passe au vert (augmente)
+    let greenCount;
+    if (isOpen) {
+      // ex: progress 1.0 -> 5 verts ; 0.8 -> 4 ; 0.6 -> 3 ; ... -> 0
+      greenCount = Math.ceil(progress * DOTS_COUNT);
+    } else {
+      // ex: progress 1.0 -> 0 verts ; 0.8 -> 1 ; 0.6 -> 2 ; ... -> 5
+      greenCount = DOTS_COUNT - Math.ceil(progress * DOTS_COUNT);
+    }
+    // borne 0..DOTS_COUNT
+    greenCount = Math.max(0, Math.min(DOTS_COUNT, greenCount));
+
+    for (let i = 0; i < DOTS_COUNT; i++) {
+      dots[i].className = 'dot ' + (i < greenCount ? 'g' : 'r');
     }
   }
+
+  // ... garde le reste (setInterval(update, 1000), etc.)
+</script>
 
   // --- Admin UI ---
   function isAdmin(){ return localStorage.getItem(LS_IS_ADMIN) === '1'; }
