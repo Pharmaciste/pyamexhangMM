@@ -62,7 +62,8 @@
 
   /* --- Admin form extra --- */
   .admin-row{display:flex; gap:8px; flex-wrap:wrap; justify-content:center; align-items:center; margin-top:6px}
-  .admin-row input[type="datetime-local"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
+  .admin-row input[type="datetime-local"],
+  .admin-row input[type="time"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
 
   footer{margin-top:14px; font-size:12px; opacity:.85}
   footer a{color:#a7f3d0; text-decoration:none}
@@ -98,18 +99,32 @@
 
       <!-- Zone admin (après connexion) -->
       <div class="admin" id="admin">
-        <div class="admin-row">
-          <input type="datetime-local" id="openAt" />
-          <button class="btn" id="setFromPicker">Set opening at chosen time</button>
-          <button class="btn" id="togglePause">Pause</button>
-        </div>
+        <!-- Méthode A : “Open starts now” -->
         <div class="admin-row">
           <button class="btn" id="openNow">Open starts now</button>
           <button class="btn" id="closedNow">Closed starts now</button>
+        </div>
+
+        <!-- Méthode B : date+heure précises -->
+        <div class="admin-row">
+          <input type="datetime-local" id="openAt" />
+          <button class="btn" id="setFromPicker">Set opening at chosen date/time</button>
+        </div>
+
+        <!-- Méthode C : juste une heure (on prend la DERNIÈRE occurrence) -->
+        <div class="admin-row">
+          <input type="time" id="openTime" step="60" />
+          <button class="btn" id="setFromTimeDaily">Set last opening at time (HH:MM)</button>
+        </div>
+
+        <!-- Outils -->
+        <div class="admin-row">
           <button class="btn" id="resetAnchor">Reset to global anchor</button>
+          <button class="btn" id="togglePause">Pause</button>
           <button class="btn" id="logout">Logout</button>
         </div>
-        <div class="note">Choisis l’heure d’OUVERTURE observée en jeu. Le site cyclera tout seul (1h open → 2h closed).</div>
+
+        <div class="note">Choisis l’heure d’OUVERTURE observée en jeu. Le site cyclera automatiquement (1h open → 2h closed).</div>
       </div>
 
       <footer>
@@ -144,7 +159,7 @@
   const CLOSED_MIN = 120;
   const DOTS_COUNT = 5;
 
-  // ⚓ Ancre globale par défaut (UTC) — tu peux la laisser, l’admin la remplacera au besoin
+  // ⚓ Ancre globale par défaut (UTC) — utile si tu veux une base publique
   // Exemple: 7 sept. 2025 18:53 (Paris) = 16:53 UTC
   const GLOBAL_ANCHOR_ISO = '2025-09-07T16:53:00Z';
   const MANUAL_OFFSET_SECONDS = 0;   // micro-ajustement (+/- sec) si besoin
@@ -155,7 +170,7 @@
   const LS_ANCHOR   = 'eh_anchor_ms_v1';
   const LS_PAUSED   = 'eh_paused_v1';
 
-  // Patch banner (tu peux mettre à jour ces 2 lignes sans toucher au reste)
+  // Patch banner (modifiable sans toucher au reste)
   document.getElementById('patchTag').textContent  = '4.3.0-LIVE';
   document.getElementById('patchNote').textContent = '(Hotfix 10188864)';
 
@@ -170,7 +185,8 @@
   const elDots    = document.getElementById('dots').children;
   const elAdmin   = document.getElementById('admin');
   const elNext    = document.getElementById('nextTimes');
-  const inputOpenAt = document.getElementById('openAt');
+  const inputOpenAt   = document.getElementById('openAt');
+  const inputOpenTime = document.getElementById('openTime');
   const btnTogglePause = document.getElementById('togglePause');
 
   // Modal
@@ -206,10 +222,11 @@
     else { localStorage.removeItem(LS_PAUSED); btnTogglePause.textContent = 'Pause'; }
   }
 
-  // Pré-remplir le picker (arrondi minute)
-  (function initPicker(){
+  // Pré-remplir les champs (arrondi minute)
+  (function initInputs(){
     const d = new Date(); d.setSeconds(0,0);
     inputOpenAt.value = toDatetimeLocalValue(d);
+    inputOpenTime.value = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
     setAdmin(isAdmin());
     setPaused(isPaused());
   })();
@@ -237,7 +254,6 @@
     let elapsed;
     if (isPaused()){
       if (frozenElapsed === null){
-        // première frame après passage en pause
         frozenElapsed = (((now - anchorMs)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
       }
       elapsed = frozenElapsed;
@@ -263,8 +279,6 @@
     }
 
     // ====== LED “défilement” ======
-    // Ouvert  : commence tout VERT, puis devient ROUGE LED par LED
-    // Fermé   : commence tout ROUGE, puis devient VERT LED par LED
     const phaseSec = isOpen ? OPEN_SEC : CLOSED_SEC;
     const progress = remain / phaseSec; // 1 -> 0 sur la phase
     let greenCount;
@@ -296,6 +310,11 @@
   closeModal.onclick = () => { modal.style.display='none'; };
 
   // --- Admin actions ---
+  // A) Ouverture "maintenant"
+  document.getElementById('openNow').onclick   = () => { if(!isAdmin()) return; anchorMs = Date.now(); setAnchorMs(anchorMs); update(); };
+  // B) Début de fermeture "maintenant" (ça veut dire que l'ouverture vient de finir)
+  document.getElementById('closedNow').onclick = () => { if(!isAdmin()) return; anchorMs = Date.now() - OPEN_SEC*1000; setAnchorMs(anchorMs); update(); };
+  // C1) Date + heure choisies
   document.getElementById('setFromPicker').onclick = () => {
     if(!isAdmin()) return;
     const val = inputOpenAt.value; // “YYYY-MM-DDTHH:MM” local
@@ -303,11 +322,28 @@
     const picked = new Date(val);
     if (isNaN(picked.getTime())) { alert('Date/heure invalide.'); return; }
     anchorMs = picked.getTime();          // début d'OUVERTURE
-    localStorage.setItem(LS_ANCHOR, String(anchorMs));
+    setAnchorMs(anchorMs);
     update();
   };
-  document.getElementById('openNow').onclick   = () => { if(!isAdmin()) return; anchorMs = Date.now(); localStorage.setItem(LS_ANCHOR,String(anchorMs)); update(); };
-  document.getElementById('closedNow').onclick = () => { if(!isAdmin()) return; anchorMs = Date.now() - OPEN_SEC*1000; localStorage.setItem(LS_ANCHOR,String(anchorMs)); update(); };
+  // C2) Juste une heure (HH:MM). On prend la DERNIÈRE occurrence (aujourd'hui si passé, sinon hier)
+  document.getElementById('setFromTimeDaily').onclick = () => {
+    if(!isAdmin()) return;
+    const t = inputOpenTime.value; // "HH:MM"
+    if(!t){ alert('Indique une heure HH:MM.'); return; }
+    const [hh, mm] = t.split(':').map(Number);
+    if(Number.isNaN(hh) || Number.isNaN(mm)){ alert('Heure invalide.'); return; }
+    const now = new Date();
+    const cand = new Date(now);
+    cand.setHours(hh, mm, 0, 0);
+    if (cand.getTime() > now.getTime()) {
+      // Si l'heure n'est pas encore passée aujourd'hui, on prend hier
+      cand.setDate(cand.getDate() - 1);
+    }
+    anchorMs = cand.getTime();
+    setAnchorMs(anchorMs);
+    update();
+  };
+
   document.getElementById('resetAnchor').onclick = () => { if(!isAdmin()) return; resetAnchor(); anchorMs = getAnchorMs(); update(); };
   document.getElementById('logout').onclick = () => { setAdmin(false); };
 
