@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -55,6 +55,11 @@
   .field{display:flex; gap:8px}
   .field input{flex:1; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
   .actions{display:flex; gap:8px; margin-top:10px; justify-content:flex-end}
+
+  /* --- Admin form extra --- */
+  .admin-row{display:flex; gap:8px; flex-wrap:wrap; justify-content:center; align-items:center; margin-top:6px}
+  .admin-row input[type="datetime-local"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
+  .next-times{margin-top:10px; font-size:13px; opacity:.9}
 </style>
 </head>
 <body>
@@ -78,16 +83,24 @@
       <div class="status closed" id="status">Hangar Closed</div>
       <div class="sub" id="subtitle">Opens in --:--:--</div>
 
+      <div class="next-times" id="nextTimes">Prochaine fermeture : — • Prochaine ouverture : —</div>
+
       <!-- Zone admin (affichée seulement après connexion) -->
       <div class="admin" id="admin">
-        <button class="btn" id="openNow">Open starts now</button>
-        <button class="btn" id="closedNow">Closed starts now</button>
-        <button class="btn" id="resetAnchor">Reset to global anchor</button>
-        <button class="btn" id="logout">Logout</button>
-        <div class="note">Admin only. Anchor is saved locally for everyone’s view.</div>
+        <div class="admin-row">
+          <input type="datetime-local" id="openAt" />
+          <button class="btn" id="setFromPicker">Set opening at chosen time</button>
+        </div>
+        <div class="admin-row">
+          <button class="btn" id="openNow">Open starts now</button>
+          <button class="btn" id="closedNow">Closed starts now</button>
+          <button class="btn" id="resetAnchor">Reset to global anchor</button>
+          <button class="btn" id="logout">Logout</button>
+        </div>
+        <div class="note">Admin only. Pick the last game opening time; the site will cycle automatically (1h open + 2h closed).</div>
       </div>
 
-      <div class="hint">Cycle: 2h Closed → 1h Open (auto). LEDs step one-by-one.</div>
+      <div class="hint">Cycle : 1h Open → 2h Closed (auto). LEDs step one-by-one (vert→rouge quand ouvert, rouge→vert quand fermé).</div>
     </div>
   </div>
 </div>
@@ -103,7 +116,7 @@
     <div class="actions">
       <button class="btn" id="closeModal">Fermer</button>
     </div>
-    <div class="note">Astuce : change le mot de passe dans le code (variable ADMIN_PASSWORD).</div>
+    <div class="note">Change le mot de passe dans le code (variable ADMIN_PASSWORD).</div>
   </div>
 </div>
 
@@ -115,7 +128,7 @@
   const CLOSED_MIN = 120;             // 2 h fermé
   const DOTS_COUNT = 5;               // 5 pastilles
 
-  // ⚓ Ancre globale (UTC) = 7 sept. 2025 18:53 (Paris) = 16:53 UTC
+  // ⚓ Ancre globale par défaut (UTC) = 7 sept. 2025 18:53 (Paris) = 16:53 UTC
   const GLOBAL_ANCHOR_ISO = '2025-09-07T16:53:00Z';
   const MANUAL_OFFSET_SECONDS = 0;    // micro-ajustement global (+/- secondes) si besoin
 
@@ -132,9 +145,10 @@
   const elClock   = document.getElementById('clock');
   const elStatus  = document.getElementById('status');
   const elSub     = document.getElementById('subtitle');
-  const elDotsBox = document.getElementById('dots');
-  const elDots    = elDotsBox.children;
+  const elDots    = document.getElementById('dots').children;
   const elAdmin   = document.getElementById('admin');
+  const elNext    = document.getElementById('nextTimes');
+  const inputOpenAt = document.getElementById('openAt');
 
   // Modal
   const modal      = document.getElementById('modal');
@@ -156,11 +170,31 @@
 
   let anchorMs = getAnchorMs();
 
+  // Pré-remplir le picker admin avec "maintenant" (arrondi minute)
+  (function initPicker(){
+    const d = new Date();
+    d.setSeconds(0,0);
+    inputOpenAt.value = toDatetimeLocalValue(d);
+  })();
+
+  function toDatetimeLocalValue(date){
+    const yyyy = date.getFullYear();
+    const mm = pad(date.getMonth()+1);
+    const dd = pad(date.getDate());
+    const hh = pad(date.getHours());
+    const mi = pad(date.getMinutes());
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+  }
+
+  function prettyDate(ms){
+    return new Date(ms).toLocaleString(undefined, { dateStyle:'short', timeStyle:'short' });
+  }
+
   function update(){
     const now = Date.now();
     const elapsed = (((now - anchorMs)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
 
-    // Phase: de 0 à 3600s -> OUVERT ; de 3600s à 10800s -> FERMÉ
+    // Phase: de 0 à OPEN_SEC -> OUVERT ; sinon -> FERMÉ
     const isOpen  = elapsed < OPEN_SEC;
     const remain  = isOpen ? (OPEN_SEC - elapsed) : (CYCLE_SEC - elapsed);
 
@@ -184,10 +218,8 @@
     // Fermé   : commence tout ROUGE, puis une à une devient VERTE
     let greenCount;
     if (isOpen) {
-      // ex: progress 1.0 -> 5 verts ; 0.8 -> 4 ; 0.6 -> 3 ; ... -> 0
       greenCount = Math.ceil(progress * DOTS_COUNT);
     } else {
-      // ex: progress 1.0 -> 0 verts ; 0.8 -> 1 ; 0.6 -> 2 ; ... -> 5
       greenCount = DOTS_COUNT - Math.ceil(progress * DOTS_COUNT);
     }
     greenCount = Math.max(0, Math.min(DOTS_COUNT, greenCount));
@@ -195,6 +227,20 @@
     for (let i = 0; i < DOTS_COUNT; i++) {
       elDots[i].className = 'dot ' + (i < greenCount ? 'g' : 'r');
     }
+
+    // ====== Prochaines transitions (affichage) ======
+    // Prochaine fermeture = premier (anchor + OPEN_SEC + n*CYCLE) > now
+    const nextClose = nextAfter(anchorMs + OPEN_SEC*1000, CYCLE_SEC*1000, now);
+    // Prochaine ouverture = premier (anchor + n*CYCLE) > now
+    const nextOpen  = nextAfter(anchorMs, CYCLE_SEC*1000, now);
+
+    elNext.textContent = `Prochaine fermeture : ${prettyDate(nextClose)} • Prochaine ouverture : ${prettyDate(nextOpen)}`;
+  }
+
+  function nextAfter(startMs, stepMs, nowMs){
+    if (nowMs < startMs) return startMs;
+    const k = Math.floor((nowMs - startMs) / stepMs) + 1;
+    return startMs + k*stepMs;
   }
 
   // --- Admin UI ---
@@ -202,7 +248,7 @@
   function setAdmin(v){
     if(v){ localStorage.setItem(LS_IS_ADMIN,'1'); }
     else { localStorage.removeItem(LS_IS_ADMIN); }
-    elAdmin.style.display = v ? 'flex' : 'none';
+    document.getElementById('admin').style.display = v ? 'flex' : 'none';
     loginBtn.textContent = v ? 'Admin ✓' : 'Admin Login';
   }
 
@@ -221,11 +267,24 @@
   };
   closeModal.onclick = () => { modal.style.display='none'; };
 
-  // admin buttons
-  document.getElementById('openNow').onclick   = () => { if(!isAdmin()) return; anchorMs = Date.now(); /* début d'ouverture = maintenant */ setAnchorMs(anchorMs); update(); };
-  document.getElementById('closedNow').onclick = () => { if(!isAdmin()) return; anchorMs = Date.now() - OPEN_SEC*1000; /* début fermeture = maintenant => ouverture finie */ setAnchorMs(anchorMs); update(); };
+  // admin buttons “rapides”
+  document.getElementById('openNow').onclick   = () => { if(!isAdmin()) return; anchorMs = Date.now(); setAnchorMs(anchorMs); update(); };
+  document.getElementById('closedNow').onclick = () => { if(!isAdmin()) return; anchorMs = Date.now() - OPEN_SEC*1000; setAnchorMs(anchorMs); update(); };
   document.getElementById('resetAnchor').onclick = () => { if(!isAdmin()) return; resetAnchor(); anchorMs = getAnchorMs(); update(); };
   document.getElementById('logout').onclick = () => { setAdmin(false); };
+
+  // admin “Set opening at chosen time”
+  document.getElementById('setFromPicker').onclick = () => {
+    if(!isAdmin()) return;
+    const val = inputOpenAt.value; // format "YYYY-MM-DDTHH:MM" (heure locale)
+    if(!val){ alert('Choisis une date/heure.'); return; }
+    const picked = new Date(val); // interprété en fuseau local
+    if (isNaN(picked.getTime())) { alert('Date/heure invalide.'); return; }
+    // L'ancre est le DÉBUT D'OUVERTURE → le cycle commence à ce moment-là
+    anchorMs = picked.getTime();
+    setAnchorMs(anchorMs);
+    update();
+  };
 
   setInterval(update, 1000);
   update();
