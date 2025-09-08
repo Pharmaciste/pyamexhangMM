@@ -1,55 +1,162 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Contested Zone Timers — Executive Hangar</title>
-  <link rel="stylesheet" href="assets/style.css" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Executive Hangar Timer</title>
+<style>
+  /* --- Base UI --- */
+  *{box-sizing:border-box} html,body{margin:0;padding:0}
+  body{
+    font:16px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    color:#fff; min-height:100vh; 
+    background:#0b0d12 url('https://images.unsplash.com/photo-1517817748496-62bc3047b9ff?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat fixed;
+  }
+  .overlay{background:rgba(0,0,0,.45); min-height:100vh;}
+  .wrap{max-width:560px; margin:0 auto; padding:28px 18px 48px;}
+  .panel{
+    background:rgba(10,12,18,.75);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px; padding:18px; text-align:center;
+    box-shadow:0 8px 28px rgba(0,0,0,.35);
+    backdrop-filter: blur(4px);
+  }
+  h1{margin:6px 0 10px; font-size:28px; font-weight:800; text-shadow:0 1px 2px rgba(0,0,0,.4)}
+  .clock{font:34px/1.1 ui-monospace,Menlo,Consolas,monospace; margin:6px 0 10px}
+  .status{margin:8px 0 2px; font-weight:800}
+  .status.open{color:#22c55e}
+  .status.closed{color:#ef4444}
+  .sub{opacity:.9}
+  .row{display:flex; gap:10px; justify-content:center; margin:10px 0 6px}
+  .dot{
+    width:22px; height:22px; border-radius:50%;
+    border:1px solid rgba(0,0,0,.6);
+    box-shadow: inset 0 0 16px rgba(0,0,0,.5), 0 0 10px rgba(0,0,0,.2);
+  }
+  .g{ background:#22c55e; box-shadow: inset 0 0 14px rgba(0,0,0,.5), 0 0 14px rgba(34,197,94,.4) }
+  .r{ background:#ef4444; box-shadow: inset 0 0 14px rgba(0,0,0,.5), 0 0 14px rgba(239,68,68,.35) }
+
+  /* --- Admin (caché par défaut) --- */
+  .admin{display:none; margin-top:14px; gap:8px; flex-wrap:wrap; justify-content:center}
+  .btn{padding:8px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:#111827; color:#fff; cursor:pointer}
+  .btn:hover{border-color:#3f3f46}
+  .note{opacity:.8; font-size:12px; margin-top:8px}
+  .hint{opacity:.7; font-size:12px; text-align:center; margin-top:12px}
+</style>
 </head>
 <body>
-  <header class="header">
-    <div class="nav container">
-      <div class="brand">
-        <div class="logo"></div>
-        <a href="index.html">Contested Zone Timers</a>
+<div class="overlay">
+  <div class="wrap">
+    <div class="panel">
+      <h1>Executive Hangar Timer</h1>
+
+      <div class="clock" id="clock">--:--:--</div>
+
+      <div class="row" id="dots">
+        <!-- 5 pastilles -->
+        <div class="dot g"></div><div class="dot g"></div><div class="dot r"></div><div class="dot r"></div><div class="dot r"></div>
       </div>
-      <div class="links">
-        <a href="maps.html">Contested Zone Maps</a>
-        <a href="ships.html">Ships</a>
-        <a href="how-it-works.html">How it works</a>
+
+      <div class="status closed" id="status">Hangar Closed</div>
+      <div class="sub" id="subtitle">Opens in --:--:--</div>
+
+      <!-- Zone admin (cachée pour tous, visible seulement à l'URL avec #secret) -->
+      <div class="admin" id="admin">
+        <button class="btn" id="openNow">Open starts now</button>
+        <button class="btn" id="closedNow">Closed starts now</button>
+        <button class="btn" id="resetAnchor">Reset to global anchor</button>
+        <div class="note">Admin only (hidden to visitors). Anchor is saved for everyone.</div>
       </div>
+
+      <div class="hint">Cycle: 3h Closed → 1h Open (auto). LEDs show remaining fraction of the current phase.</div>
     </div>
-  </header>
+  </div>
+</div>
 
-  <main class="container" style="padding-top:24px">
-    <div class="grid">
-      <section class="card" style="grid-column: span 2;">
-        <h2 class="h1">Executive Hangar — Cycle 3h fermé / 1h ouvert</h2>
-        <p class="p">Timer cyclique. Utilise les boutons pour le recaler sur l'état en jeu si besoin.</p>
+<script>
+  /***************
+   * PARAMETERS
+   ***************/
+  const CLOSED_MIN = 180;             // 3h fermé
+  const OPEN_MIN   = 60;              // 1h ouvert
+  const DOTS_COUNT = 5;               // 5 pastilles
+  const ADMIN_SECRET = 'secret123';   // change ce code si tu veux (ex: 'moncodeperso')
+  // ⚓ Ancre globale par défaut (UTC) : début d'un cycle. Modifie si tu veux une date précise.
+  const GLOBAL_ANCHOR_ISO = '2025-09-01T00:00:00Z';
+  const MANUAL_OFFSET_SECONDS = 0;    // petit décalage global si besoin (+/- secondes)
 
-        <div class="timer-wrap">
-          <div id="led" class="led green" aria-label="state led"></div>
-          <span id="phase" class="badge closed">FERMÉ</span>
-          <span id="time" class="time">--:--:--</span>
-        </div>
+  const CYCLE_SEC  = (CLOSED_MIN + OPEN_MIN) * 60;
+  const CLOSED_SEC = CLOSED_MIN * 60;
 
-        <div class="controls">
-          <button class="btn" onclick="recalOpen()">Recalibrer : Ouvert maintenant</button>
-          <button class="btn" onclick="recalClosed()">Recalibrer : Fermé maintenant</button>
-        </div>
-      </section>
+  // Élts UI
+  const elClock   = document.getElementById('clock');
+  const elDots    = document.getElementById('dots').children;
+  const elStatus  = document.getElementById('status');
+  const elSub     = document.getElementById('subtitle');
+  const elAdmin   = document.getElementById('admin');
 
-      <section class="card">
-        <h3 class="h2">Infos</h3>
-        <p class="p">Zone pour messages (patch en cours, glitchs connus, etc.).</p>
-      </section>
-    </div>
-  </main>
+  // Persistance
+  const LS_KEY = 'eh_anchor_ms_v1';
 
-  <footer class="footer">
-    Fan-made / Non affilié à CIG. Crédits sur chaque page.
-  </footer>
+  const pad = n => String(n).padStart(2,'0');
+  const fmt = s => { s=Math.max(0,Math.floor(s)); return `${pad(Math.floor(s/3600))}:${pad(Math.floor((s%3600)/60))}:${pad(s%60)}`; };
 
-  <script src="assets/app.js"></script>
+  // Base (ancre) = ce que voient tous les visiteurs (stockée et lue côté client)
+  function getGlobalAnchorMs(){
+    return Date.parse(GLOBAL_ANCHOR_ISO) + MANUAL_OFFSET_SECONDS*1000;
+  }
+  function getAnchorMs(){
+    const saved = localStorage.getItem(LS_KEY);
+    return (saved && /^\d+$/.test(saved)) ? Number(saved) : getGlobalAnchorMs();
+  }
+  function setAnchorMs(ms){
+    localStorage.setItem(LS_KEY, String(ms));
+  }
+  function resetAnchor(){
+    localStorage.removeItem(LS_KEY);
+  }
+
+  let anchorMs = getAnchorMs();
+
+  function update(){
+    const now = Date.now();
+    const elapsed = (((now - anchorMs)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
+    const isOpen  = elapsed >= CLOSED_SEC;
+    const remain  = isOpen ? (CYCLE_SEC - elapsed) : (CLOSED_SEC - elapsed);
+    const phaseSec= isOpen ? OPEN_MIN*60 : CLOSED_MIN*60;
+    const ratio   = remain / phaseSec;            // 1 → 0 sur la phase courante
+
+    // Clock + texte
+    elClock.textContent = fmt(remain);
+    if(isOpen){
+      elStatus.textContent = 'Hangar Open';
+      elStatus.className = 'status open';
+      elSub.textContent = 'Closes in ' + fmt(remain);
+    }else{
+      elStatus.textContent = 'Hangar Closed';
+      elStatus.className = 'status closed';
+      elSub.textContent = 'Opens in ' + fmt(remain);
+    }
+
+    // Pastilles : on allume en VERT le pourcentage restant, le reste en ROUGE
+    const greenCount = Math.max(0, Math.min(DOTS_COUNT, Math.round(ratio * DOTS_COUNT)));
+    for(let i=0;i<DOTS_COUNT;i++){
+      elDots[i].className = 'dot ' + (i < greenCount ? 'g' : 'r');
+    }
+  }
+
+  // --- Admin (caché pour tous) ---
+  const hash = (location.hash||'').replace(/^#/,'');
+  const isAdmin = hash === ADMIN_SECRET;
+  if(isAdmin){
+    elAdmin.style.display = 'flex';
+    document.getElementById('openNow').onclick = () => { anchorMs = Date.now() - CLOSED_SEC*1000; setAnchorMs(anchorMs); update(); };
+    document.getElementById('closedNow').onclick = () => { anchorMs = Date.now(); setAnchorMs(anchorMs); update(); };
+    document.getElementById('resetAnchor').onclick = () => { resetAnchor(); anchorMs = getAnchorMs(); update(); };
+  }
+
+  setInterval(update, 1000);
+  update();
+</script>
 </body>
 </html>
