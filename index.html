@@ -12,20 +12,16 @@
     --accent:#fbbf24; --accent-2:#fde047; --shadow:rgba(0,0,0,.45)
   }
   *{box-sizing:border-box} html,body{margin:0;padding:0}
-  body{
-    font:16px/1.55 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--text);
-    background: var(--bg);
-    min-height:100vh;
-  }
-  /* Gros watermark Mammon pour bien le voir */
+  body{font:16px/1.55 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--text); background:var(--bg); min-height:100vh;}
+  /* Gros watermark Mammon bien visible */
   .wm{position:fixed; inset:0; pointer-events:none; z-index:0;
-      background:url('/assets/mammon.png') center 40%/min(88vmin,1100px) no-repeat;
-      opacity:.22; filter: drop-shadow(0 0 22px rgba(0,0,0,.65))}
-  .overlay{position:relative; z-index:1; 
+      background:url('/assets/mammon.png') center 40%/min(90vmin,1200px) no-repeat;
+      opacity:.25; filter: drop-shadow(0 0 22px rgba(0,0,0,.65))}
+  .overlay{position:relative; z-index:1;
       background:
         radial-gradient(90vw 60vh at 70% -20%, rgba(253,224,71,.10), transparent 60%),
         radial-gradient(70vw 50vh at -10% 0%, rgba(251,191,36,.10), transparent 60%),
-        linear-gradient(180deg, rgba(0,0,0,.38), rgba(0,0,0,.25));
+        linear-gradient(180deg, rgba(0,0,0,.34), rgba(0,0,0,.22));
       min-height:100vh;}
   .wrap{max-width:980px; margin:0 auto; padding:18px 18px 60px;}
 
@@ -50,7 +46,7 @@
   .meta{margin-top:10px; font-size:12px; opacity:.9}
   .next{margin-top:12px; font-size:13px; opacity:.96}
 
-  /* Planning 24h */
+  /* Planning 24 h */
   .sched{margin-top:12px}
   .sched table{width:100%; border-collapse:collapse; font-size:14px}
   .sched th,.sched td{padding:8px 10px; border-top:1px solid rgba(255,255,255,.08)}
@@ -260,27 +256,25 @@
   const anchorMs=()=>Date.parse(cfg.anchor_iso)+(cfg.manual_offset_seconds||0)*1000;
   const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
 
-  /* ===== Ancre = AUJOURD’HUI 20:14:06 (locale) ===== */
+  /* ===== Ancre = AUJOURD’HUI 20:14:06 locale ===== */
   function setAnchorToday201406(){
     const now=new Date();
-    const today=new Date(now);
-    today.setHours(20,14,6,0); // 20:14:06 local
-    // On force l’ancre sur AUJOURD’HUI à 20:14:06 (demande explicite)
+    const today=new Date(now); today.setHours(20,14,6,0);
     cfg.anchor_iso = toISO(today.getTime());
     cfg.manual_offset_seconds = 0;
-    elMode.textContent='Ancre fixée : aujourd’hui 20:14:06 — cycle 65:00 / 2:00:01';
+    elMode.textContent='Ancre fixée sur AUJOURD’HUI 20:14:06 — cycle 65:00 / 2:00:01';
     inputTime.value='20:14';
   }
 
   /* ===== LEDs ===== */
   function greenCountClosed(remainSec){
-    const seg = CLOSED_SEC / DOTS;                 // ~24 min par LED
-    let cnt = DOTS - Math.ceil(remainSec / seg);   // 0..5 verts juste avant l’ouverture
+    const seg = CLOSED_SEC / DOTS;                // ~24 min par LED
+    let cnt = DOTS - Math.ceil(remainSec / seg);  // 0→5 verts en approchant de l’ouverture
     return Math.max(0, Math.min(DOTS, cnt));
   }
   function greenCountOpen(remainSec){
-    if (remainSec <= 5*60) return 0;               // “black” 5 dernières minutes
-    const eff = Math.min(60*60, remainSec - 5*60); // 60 min de LEDs actives
+    if (remainSec <= 5*60) return 0;              // 5 dernières minutes : “black”
+    const eff = Math.min(60*60, remainSec - 5*60);// 60 min de LEDs actives
     return Math.max(0, Math.min(DOTS, Math.ceil(eff / (12*60))));
   }
 
@@ -356,20 +350,9 @@
 
   /* ===== API (facultatif) ===== */
   async function loadCfg(){
-    try{
-      const r=await fetch('/api/anchor?ts='+Date.now(),{cache:'no-store'});
-      if(!r.ok) throw new Error(r.status);
-      const js=await r.json();
-      cfg.anchor_iso=js.anchor_iso||null;
-      cfg.manual_offset_seconds=js.manual_offset_seconds||0;
-      cfg.paused=!!js.paused;
-      if(!cfg.anchor_iso) setAnchorToday201406();
-      elMode.textContent='Config chargée. Dernière MAJ : '+(cfg.anchor_iso?pretty(Date.parse(cfg.anchor_iso)):'—');
-      render(true);
-    }catch{
-      setAnchorToday201406();
-      render(true);
-    }
+    // On ignore un éventuel backend et on force l’ancre sur AUJOURD’HUI 20:14:06
+    setAnchorToday201406();
+    render(true);
   }
 
   /* ===== Admin caché ===== */
@@ -390,14 +373,10 @@
   }
 
   function postAnchorOrLocal(iso, pausedFlag){
-    // Essaie backend, sinon local — mais l’ancre “aujourd’hui 20:14:06” reste la base
-    fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({password:adminPwd||'',anchor_iso:iso,manual_offset_seconds:0,paused:typeof pausedFlag==='boolean'?pausedFlag:cfg.paused})})
-    .then(async r=>{
-      if(!r.ok) throw new Error('POST failed');
-      cfg=await r.json(); render(true);
-    })
-    .catch(()=>{ cfg.anchor_iso=iso; if(typeof pausedFlag==='boolean') cfg.paused=pausedFlag; render(true); });
+    // Pas de backend requis : on applique localement
+    cfg.anchor_iso=iso;
+    if(typeof pausedFlag==='boolean') cfg.paused=pausedFlag;
+    render(true);
   }
 
   btnPublish.onclick= ()=>{ const v=inputTime.value.trim(); if(!v) return alert('Indique HH:MM'); postAnchorOrLocal(isoFromHHMM(v)); };
@@ -428,7 +407,7 @@
   ppBtn.addEventListener('click', togglePrivacy);
   if (location.hash === '#privacy') setPrivacyVisibility(true);
 
-  /* ===== Tête : son + message — RESET à chaque refresh ===== */
+  /* ===== T : son + message — RESET à chaque refresh ===== */
   function setTKilledUI(killed){
     if(killed){ tHead.style.display='none'; tKilledMsg.style.display='block'; }
     else      { tHead.style.display='flex'; tKilledMsg.style.display='none'; }
@@ -438,7 +417,6 @@
     setTKilledUI(true);
     // pas de localStorage : re-cliquable à chaque actualisation
   });
-  // au chargement, on la remet toujours
   setTKilledUI(false);
 
   /* ===== Tick & Go ===== */
