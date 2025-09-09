@@ -25,6 +25,7 @@
   .badge{font-size:11px;font-weight:900;padding:4px 8px;border-radius:999px;
          background:#000;color:var(--accent);border:1px solid var(--accent)}
   .patch{font-size:13px;color:var(--ok)}
+  .patch-date{font-size:12px;opacity:.8;margin-top:2px}
 
   .discord-bar{background:#1a1a1a;border:1px solid rgba(255,255,255,.1);border-radius:12px;
                padding:10px 14px;margin-bottom:16px;text-align:center}
@@ -56,10 +57,10 @@
   .modal{display:none;position:fixed;inset:0;z-index:20;align-items:center;justify-content:center;
          background:rgba(0,0,0,.6)}
   .modal .box{background:#111;border:1px solid var(--panel-border);border-radius:12px;
-              padding:16px;width:100%;max-width:320px}
+              padding:16px;width:100%;max-width:360px}
   .modal h3{margin:0 0 10px;font-size:18px}
   .btn{padding:8px 12px;border-radius:8px;background:#000;color:var(--accent);
-       border:1px solid var(--accent);cursor:pointer}
+       border:1px solid var(--accent);cursor:pointer;margin-top:6px}
 </style>
 </head>
 <body>
@@ -73,7 +74,10 @@
       <h1>MAMMON TIMER</h1>
       <span class="badge">LIVE</span>
     </div>
-    <div class="patch">Updated for Star Citizen Patch 4.3.0-LIVE (Hotfix 10188864)</div>
+    <div>
+      <div class="patch">Updated for Star Citizen Patch 4.3.0-LIVE (Hotfix 10188864)</div>
+      <div class="patch-date" id="patchDate"></div>
+    </div>
   </header>
 
   <!-- Discord bar -->
@@ -101,16 +105,18 @@
 <!-- Admin modal -->
 <div class="modal" id="modal">
   <div class="box">
-    <h3>Admin Access</h3>
-    <input type="password" id="pwd" placeholder="Password" style="width:100%;margin-bottom:10px;padding:8px;border-radius:8px;background:#0a0a0a;color:#fff;border:1px solid #333">
-    <button class="btn" id="doLogin">OK</button>
+    <h3>Admin Panel</h3>
+    <label>Set last open (HH:MM): <input type="time" id="openTime" step="60"></label>
+    <button class="btn" id="publish">Apply</button>
+    <button class="btn" id="togglePause">Pause/Resume Hangar</button>
     <button class="btn" id="closeModal">Close</button>
   </div>
 </div>
 
 <script>
 const OPEN_SEC=65*60,CLOSED_SEC=2*3600+1,CYCLE_SEC=OPEN_SEC+CLOSED_SEC,CYCLE_MS=CYCLE_SEC*1000,DOTS=5;
-const ANCHOR=new Date();ANCHOR.setHours(20,14,6,0);const anchor_ms=ANCHOR.getTime();
+const ANCHOR=new Date();ANCHOR.setHours(20,14,6,0);let anchor_ms=ANCHOR.getTime();
+let paused=false;
 
 const elClock=document.getElementById('clock'),
 elUntil=document.getElementById('until'),
@@ -119,49 +125,56 @@ elStatusBig=document.getElementById('statusBig'),
 elSub=document.getElementById('subtitle'),
 elNext=document.getElementById('nextTimes'),
 leds=document.getElementById('leds').children,
-scheduleDiv=document.getElementById('schedule');
+scheduleDiv=document.getElementById('schedule'),
+patchDate=document.getElementById('patchDate');
 
 const secretLogo=document.getElementById('secretLogo'),
 modal=document.getElementById('modal'),
-pwdInput=document.getElementById('pwd'),
-doLogin=document.getElementById('doLogin'),
+inputTime=document.getElementById('openTime'),
+btnPublish=document.getElementById('publish'),
+btnPause=document.getElementById('togglePause'),
 closeModal=document.getElementById('closeModal');
 
 const pad=n=>String(n).padStart(2,'0'),
-fmtHMS=s=>`${pad((s/3600)|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`,
-fmtMMSS=s=>`${Math.floor(s/60)}:${pad(s%60)}`,
+fmtHMS=s=>{s=Math.floor(s);return `${pad((s/3600)|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`;},
+fmtMMSS=s=>{s=Math.floor(s);return `${pad((s/60)|0)}:${pad(s%60)}`;},
 pretty=ms=>new Date(ms).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'});
 
-function greensClosed(r){const seg=CLOSED_SEC/DOTS;return Math.max(0,Math.min(DOTS,DOTS-Math.ceil(r/seg))); }
-function greensOpen(r){if(r<=300)return 0;const eff=Math.min(3600,r-300);return Math.min(DOTS,Math.ceil(eff/720)); }
+function greens(remain,isOpen){
+  if(isOpen){
+    if(remain<=300) return 0;
+    const eff=Math.min(3600,remain-300);
+    return Math.min(DOTS,Math.ceil(eff/720));
+  }else{
+    const seg=CLOSED_SEC/DOTS;
+    return Math.max(0,DOTS-Math.ceil(remain/seg));
+  }
+}
+
 function nextAfter(start,step,now){return now<start?start:start+(Math.floor((now-start)/step)+1)*step;}
 
 let lastMin=-1;
 function render(force=false){
+  if(paused) return;
   const now=Date.now(),elapsed=((now-anchor_ms)/1000%CYCLE_SEC+CYCLE_SEC)%CYCLE_SEC,isOpen=elapsed<OPEN_SEC;
   const phaseSec=isOpen?OPEN_SEC:CLOSED_SEC,phaseElapsed=isOpen?elapsed:(elapsed-OPEN_SEC),remain=phaseSec-phaseElapsed;
 
-  // Timers
-  elUntil.textContent=fmtHMS(remain);   // HH:MM:SS
-  elClock.textContent=fmtHMS(remain);  // HH:MM:SS
-  elSub.textContent='Next transition ('+(isOpen?'close':'open')+') in '+fmtMMSS(remain); // MM:SS only
+  elUntil.textContent=fmtHMS(remain);
+  elClock.textContent=fmtHMS(remain);
+  elSub.textContent='Next transition ('+(isOpen?'close':'open')+') in '+fmtMMSS(remain);
 
-  // Status
   elStatus.textContent='Hangar '+(isOpen?'Open':'Closed');
   elStatus.className='status '+(isOpen?'open':'closed');
   elStatusBig.textContent=isOpen?'ONLINE':'OFFLINE';
   elStatusBig.className='big '+(isOpen?'open':'closed');
 
-  // LEDs
-  const g=isOpen?greensOpen(remain):greensClosed(remain);
+  const g=greens(remain,isOpen);
   for(let i=0;i<DOTS;i++)leds[i].className='led '+(i<g?'g':'r');
 
-  // Next events
   const nextOpen=nextAfter(anchor_ms,CYCLE_MS,now),
         nextClose=nextAfter(anchor_ms+OPEN_SEC*1000,CYCLE_MS,now);
   elNext.textContent=`Next Close: ${pretty(nextClose)} • Next Open: ${pretty(nextOpen)}`;
 
-  // Update schedule once per minute
   const m=new Date(now).getMinutes();
   if(force||m!==lastMin){lastMin=m;updateSchedule(now);}
 }
@@ -173,26 +186,43 @@ function updateSchedule(nowMs){
   while(open<horizon){
     const cyc=49+Math.round((open-anchor_ms)/CYCLE_MS),
           close=open+OPEN_SEC*1000;
-    if(open>=nowMs)rows.push({cyc,type:'on',at:open});
-    if(close>=nowMs)rows.push({cyc,type:'off',at:close});
+    if(close>=nowMs){
+      rows.push({cyc,on:open,off:close});
+    }
     open+=CYCLE_MS;
   }
-  rows.sort((a,b)=>a.at-b.at);
+  rows.sort((a,b)=>a.on-b.on);
   let html='<table><thead><tr><th>Cycle</th><th>Status</th><th>Local Time</th></tr></thead><tbody>';
   for(const r of rows){
-    html+=`<tr><td>${r.cyc}</td><td><span class="tag ${r.type==='on'?'on':'off'}">${r.type==='on'?'Online':'Offline'}</span></td><td>${pretty(r.at)}</td></tr>`;
+    html+=`<tr>
+      <td>${r.cyc}</td>
+      <td><span class="tag on">Online</span> • <span class="tag off">Offline</span></td>
+      <td>${pretty(r.on)} → ${pretty(r.off)}</td>
+    </tr>`;
   }
   html+='</tbody></table>';scheduleDiv.innerHTML=html;
 }
 
 // Admin modal
-secretLogo.ondblclick=()=>{modal.style.display='flex';pwdInput.value='';pwdInput.focus();};
-document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='a'){modal.style.display='flex';pwdInput.value='';pwdInput.focus();}});
-doLogin.onclick=()=>{alert("Admin mode activated (demo)");modal.style.display='none';};
-closeModal.onclick=()=>{modal.style.display='none';};
+secretLogo.ondblclick=()=>{modal.style.display='flex';};
+document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='a'){modal.style.display='flex';}});
+closeModal.onclick=()=>modal.style.display='none';
+btnPause.onclick=()=>{paused=!paused;};
+btnPublish.onclick=()=>{
+  const v=inputTime.value;
+  if(!v) return;
+  const [hh,mm]=v.split(':').map(Number);
+  const d=new Date();d.setHours(hh,mm,6,0);
+  if(d.getTime()>Date.now()) d.setDate(d.getDate()-1);
+  anchor_ms=d.getTime();
+  render(true);
+  modal.style.display='none';
+};
 
-// Start
-render(true);setInterval(render,1000);
+// Patch date (site last updated)
+patchDate.textContent="Site updated: "+new Date().toLocaleString();
+
+render(true);setInterval(()=>render(),1000);
 </script>
 </body>
 </html>
