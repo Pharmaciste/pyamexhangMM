@@ -14,7 +14,7 @@
   *{box-sizing:border-box} html,body{margin:0;padding:0}
   body{font:16px/1.55 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--text); background:var(--bg); min-height:100vh;}
 
-  /* Gros watermark Mammon visible */
+  /* Gros watermark Mammon */
   .wm{position:fixed; inset:0; pointer-events:none; z-index:0;
       background:url('/assets/mammon.png') center 40%/min(90vmin,1200px) no-repeat;
       opacity:.26; filter: drop-shadow(0 0 22px rgba(0,0,0,.65))}
@@ -35,23 +35,22 @@
   .mini-badge{font-size:12px; line-height:1; color:var(--ok); background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.45); padding:6px 10px; border-radius:999px}
 
   .panel{background:var(--panel); border:1px solid var(--panel-border); border-radius:16px; padding:18px; box-shadow:0 12px 30px var(--shadow); backdrop-filter: blur(6px)}
-  h1{margin:6px 0 10px; font-size:30px; font-weight:900}
+  h1{margin:6px 0 6px; font-size:30px; font-weight:900}
+  .bigStatus{font-size:40px; font-weight:900; margin:0 0 8px}
+  .bigStatus.open{color:var(--ok)} .bigStatus.closed{color:var(--danger)}
+  .until{font:14px/1.2 ui-monospace,monospace; margin:2px 0 8px; opacity:.95}
+  .row{display:flex; gap:10px; justify-content:center; margin:6px 0 10px}
+  .led{width:22px; height:22px; border-radius:7px; border:1px solid rgba(0,0,0,.6); background:#0b1323; box-shadow: inset 0 0 12px rgba(0,0,0,.6), 0 0 12px rgba(0,0,0,.25)}
+  .led.g{ background:var(--ok); box-shadow: inset 0 0 10px rgba(0,0,0,.45), 0 0 16px rgba(34,197,94,.45) }
+  .led.r{ background:var(--danger); box-shadow: inset 0 0 10px rgba(0,0,0,.45), 0 0 14px rgba(239,68,68,.35) }
   .clock{font:42px/1.1 ui-monospace,Menlo,Consolas,monospace; margin:6px 0 10px}
   .status{margin:8px 0 2px; font-weight:900; letter-spacing:.3px}
   .status.open{color:var(--ok)} .status.closed{color:var(--danger)}
   .sub{opacity:.95}
-
-  /* Time until next change */
-  .until{font:14px/1.2 ui-monospace,monospace; margin:2px 0 8px; opacity:.95}
-
-  .row{display:flex; gap:10px; justify-content:center; margin:8px 0 8px}
-  .led{width:22px; height:22px; border-radius:7px; border:1px solid rgba(0,0,0,.6); background:#0b1323; box-shadow: inset 0 0 12px rgba(0,0,0,.6), 0 0 12px rgba(0,0,0,.25)}
-  .led.g{ background:var(--ok); box-shadow: inset 0 0 10px rgba(0,0,0,.45), 0 0 16px rgba(34,197,94,.45) }
-  .led.r{ background:var(--danger); box-shadow: inset 0 0 10px rgba(0,0,0,.45), 0 0 14px rgba(239,68,68,.35) }
   .meta{margin-top:10px; font-size:12px; opacity:.9}
   .next{margin-top:8px; font-size:13px; opacity:.96}
 
-  /* Planning 24 h (même structure que la capture) */
+  /* Planning 24 h */
   .sched{margin-top:12px}
   .sched table{width:100%; border-collapse:collapse; font-size:14px}
   .sched th,.sched td{padding:8px 10px; border-top:1px solid rgba(255,255,255,.08)}
@@ -70,16 +69,15 @@
   .privacy h3{margin:16px 0 6px; font-size:16px; font-weight:800}
   .privacy p, .privacy li{color:#dbeafe}
 
-  /* Admin */
+  /* Admin minimal */
   .btn{padding:9px 12px; border-radius:12px; border:1px solid var(--panel-border); background:#0f172a; color:#fff; cursor:pointer}
   .btn.primary{background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111; border-color:transparent; font-weight:900}
   .admin .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:8px}
-  .num{width:84px;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff}
   .admin input[type="time"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
 
-  /* Tête cliquable (reset à chaque refresh) */
+  /* Widget Nain */
   .t-head{position:fixed; right:14px; bottom:14px; z-index:5; display:flex; align-items:center; gap:10px; background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12); padding:8px 10px; border-radius:14px; backdrop-filter: blur(6px)}
-  .t-head img{width:56px; height:56px; border-radius:999px; object-fit:cover; border:1px solid rgba(255,255,255,.2); cursor:pointer}
+  .t-head img{width:64px; height:64px; border-radius:12px; object-fit:cover; border:1px solid rgba(255,255,255,.2); cursor:pointer}
   .t-head .note{font-size:12px; opacity:.9}
   .t-killed{position:fixed; right:14px; bottom:14px; z-index:4; background:rgba(239,68,68,.15); border:1px solid rgba(239,68,68,.45); padding:8px 12px; border-radius:14px; display:none}
 </style>
@@ -92,20 +90,19 @@
     <!-- Header -->
     <header>
       <div class="brand">
-        <div class="brand-logo" id="secretLogo" aria-hidden="true" title=" "></div>
+        <div class="brand-logo" id="secretLogo" aria-hidden="true"></div>
         <div class="brand-title">CZ Timers</div>
         <span class="badge">LIVE</span>
       </div>
       <div class="header-right">
-        <span class="mini-badge" id="patchBadge" title="Star Citizen patch">
-          Updated for Star Citizen Patch 4.3.0-LIVE (Hotfix 10188864)
-        </span>
+        <span class="mini-badge" id="patchBadge">Updated for Star Citizen Patch 4.3.0-LIVE (Hotfix 10188864)</span>
       </div>
     </header>
 
-    <!-- Panel Timer -->
+    <!-- Timer -->
     <section class="panel">
-      <h1>Executive Hangar Timer</h1>
+      <h1>Executive Hangar Status</h1>
+      <div id="statusBig" class="bigStatus closed">OFFLINE</div>
 
       <div class="until">Time until next change: <span id="until">--:--</span></div>
       <div class="row" id="leds">
@@ -119,31 +116,19 @@
       <div class="meta" id="modeMeta">Chargement…</div>
 
       <!-- Planning 24 h -->
-      <div class="sched" id="scheduleWrap">
+      <div class="sched">
         <div class="next" style="margin-top:10px">Prochaines fenêtres (24 h)</div>
         <div id="schedule"></div>
       </div>
 
-      <!-- Admin (caché par défaut) -->
+      <!-- Admin caché -->
       <div class="admin" id="adminPanel" style="display:none">
         <div class="row">
           <label for="openTime"><strong>Dernière ouverture (HH:MM)</strong> :</label>
           <input type="time" id="openTime" step="60" />
-        </div>
-        <div class="row">
-          <button class="btn primary" id="publishGlobal">Mettre à jour GLOBAL</button>
-          <button class="btn" id="togglePauseGlobal">Pause/Reprendre</button>
-          <button class="btn" id="forceOpenNow">Forcer : Hangar ouvert maintenant</button>
-          <button class="btn" id="forceClosedNow">Forcer : Hangar fermé maintenant</button>
-          <button class="btn" id="reload">Recharger</button>
+          <button class="btn primary" id="publish">Appliquer</button>
+          <button class="btn" id="togglePause">Pause/Reprendre</button>
           <button class="btn" id="logout">Se déconnecter</button>
-        </div>
-        <div class="row">
-          <span style="font-size:12px;opacity:.85">Calage express :</span>
-          <input class="num" type="number" id="minsToClose" min="0" max="65" placeholder="mins" />
-          <button class="btn" id="syncCloseIn">Fermeture dans X min</button>
-          <input class="num" type="number" id="minsToOpen" min="0" max="120" placeholder="mins" />
-          <button class="btn" id="syncOpenIn">Ouverture dans X min</button>
         </div>
       </div>
     </section>
@@ -157,39 +142,37 @@
         <h2>Privacy Policy</h2>
         <p><em>Effective Date: September 8, 2025</em></p>
         <h3>Information We Collect</h3>
-        <p>We do <strong>not</strong> collect, sell, or share personal data. Timer preferences are saved in your browser’s <strong>Local Storage</strong> for convenience. This data stays on your device and is never transmitted to our servers.</p>
+        <p>We do <strong>not</strong> collect, sell, or share personal data. Preferences are saved locally in your browser.</p>
         <h3>Cookies &amp; Tracking</h3>
-        <p>We currently do not use cookies. In the future, we may enable cookies or similar technologies to show ads (e.g., Google AdSense, Ezoic). These may process non-identifiable data (e.g., page views) to serve relevant ads. You can control or delete cookies in your browser settings at any time.</p>
-        <h3>Third-Party Services (Ads)</h3>
-        <p>If/when ads are enabled, third-party ad networks (e.g., Google AdSense, Ezoic) may use cookies and similar tech to deliver and measure ads. Please review their respective privacy policies for details on their processing.</p>
+        <p>No cookies for now. If ads are enabled later, you’ll be able to control them in your browser.</p>
         <h3>Your Rights</h3>
-        <p>Depending on your location, you may have rights under laws such as <strong>GDPR</strong> (EU/EEA/UK) or <strong>CCPA/CPRA</strong> (California), including access, correction, deletion, objection/restriction, and withdrawing consent (where applicable). Because we do not collect personal data, these rights mainly relate to cookie preferences you control in your browser if/when ads are enabled.</p>
+        <p>Depending on where you live, GDPR/CCPA/CPRA may apply. Since no personal data is collected, this mainly concerns cookie choices.</p>
         <h3>Data Retention</h3>
-        <p>We do not maintain user profiles or store personal data. Local Storage data remains on your device until you clear it.</p>
+        <p>Nothing on our servers. Local data remains until you clear it.</p>
         <h3>Children’s Privacy</h3>
-        <p>This site is for a general audience and does not knowingly collect information from children under 13.</p>
-        <h3>Changes to This Policy</h3>
-        <p>We may update this Policy from time to time. We will post changes here with a new Effective Date.</p>
+        <p>No data knowingly collected from children under 13.</p>
+        <h3>Changes</h3>
+        <p>We may update this Policy from time to time.</p>
       </div>
     </section>
 
   </div>
 </div>
 
-<!-- Tête cliquable (reset à chaque refresh) -->
+<!-- Widget Nain -->
 <div class="t-head" id="tHead">
-  <img id="tHeadImg" src="/assets/t-head.png" alt="T" title="(touche le T pour des auec)" />
-  <div class="note">(touche le T pour des auec)</div>
+  <img id="tHeadImg" src="/assets/nain.png" alt="nain" title="résous le problème capillaire" />
+  <div class="note">résous le problème capillaire</div>
   <audio id="tSong" src="/assets/confused-song.mp3" preload="auto"></audio>
 </div>
-<div class="t-killed" id="tKilledMsg">— tu a tuer le T bravo ! —</div>
+<div class="t-killed" id="tKilledMsg">— échec —</div>
 
-<!-- Modal Admin (login) -->
+<!-- Modal Admin -->
 <div class="modal" id="modal" style="display:none">
   <div class="box" style="background:#0f1220; border:1px solid var(--panel-border); border-radius:12px; padding:16px; width:100%; max-width:360px">
     <h3 style="margin:0 0 10px; font-size:18px">Connexion admin</h3>
     <div class="field" style="display:flex; gap:8px">
-      <input type="password" id="pwd" placeholder="Mot de passe admin (Vercel → ADMIN_PASSWORD)" style="flex:1;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff" />
+      <input type="password" id="pwd" placeholder="Mot de passe" style="flex:1;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff" />
       <button class="btn" id="doLogin">OK</button>
     </div>
     <div class="actions" style="display:flex; gap:8px; margin-top:10px; justify-content:flex-end">
@@ -199,223 +182,193 @@
 </div>
 
 <script>
-  /* ===== Cycle exact : Online 65:00 / Offline 2:00:01 ===== */
-  const OPEN_SEC   = 65*60;          // 3900
-  const CLOSED_SEC = 2*3600 + 1;     // 7201
-  const CYCLE_SEC  = OPEN_SEC + CLOSED_SEC; // 11101
-  const DOTS=5;
-  const ANCHOR_CYCLE = 49;           // #49 = aujourd’hui 20:14:06
+/* ======= Paramètres cycle ======= */
+const OPEN_SEC   = 65*60;          // 65:00
+const CLOSED_SEC = 2*3600 + 1;     // 2:00:01
+const CYCLE_SEC  = OPEN_SEC + CLOSED_SEC; // 03:05:01
+const DOTS = 5;
+const ANCHOR_CYCLE = 49;           // #49 = aujourd’hui 20:14:06
 
-  /* ===== Elements ===== */
-  const elClock=document.getElementById('clock');
-  const elUntil=document.getElementById('until');
-  const elStatus=document.getElementById('status');
-  const elSub=document.getElementById('subtitle');
-  const leds=document.getElementById('leds').children;
-  const elNext=document.getElementById('nextTimes');
-  const elMode=document.getElementById('modeMeta');
-  const scheduleDiv=document.getElementById('schedule');
+/* ======= Références DOM ======= */
+const elClock = document.getElementById('clock');
+const elUntil = document.getElementById('until');
+const elStatus = document.getElementById('status');
+const elStatusBig = document.getElementById('statusBig');
+const elSub = document.getElementById('subtitle');
+const elNext = document.getElementById('nextTimes');
+const elMode = document.getElementById('modeMeta');
+const leds = document.getElementById('leds').children;
+const scheduleDiv = document.getElementById('schedule');
 
-  const adminPanel=document.getElementById('adminPanel');
-  const inputTime=document.getElementById('openTime');
-  const btnPublish=document.getElementById('publishGlobal');
-  const btnPause=document.getElementById('togglePauseGlobal');
-  const btnForceOpen=document.getElementById('forceOpenNow');
-  const btnForceClosed=document.getElementById('forceClosedNow');
-  const btnReload=document.getElementById('reload');
-  const btnLogout=document.getElementById('logout');
+const adminPanel = document.getElementById('adminPanel');
+const secretLogo = document.getElementById('secretLogo');
+const modal = document.getElementById('modal');
+const pwdInput = document.getElementById('pwd');
+const doLoginBtn = document.getElementById('doLogin');
+const closeModal = document.getElementById('closeModal');
+const inputTime = document.getElementById('openTime');
+const btnPublish = document.getElementById('publish');
+const btnPause = document.getElementById('togglePause');
+const btnLogout = document.getElementById('logout');
 
-  const inputMinsToClose=document.getElementById('minsToClose');
-  const inputMinsToOpen=document.getElementById('minsToOpen');
-  const btnSyncCloseIn=document.getElementById('syncCloseIn');
-  const btnSyncOpenIn=document.getElementById('syncOpenIn');
+const ppBtn = document.getElementById('ppBtn');
+const ppSection = document.getElementById('privacy');
 
-  const ppBtn=document.getElementById('ppBtn');
-  const ppSection=document.getElementById('privacy');
+const tHead = document.getElementById('tHead');
+const tHeadImg = document.getElementById('tHeadImg');
+const tKilledMsg = document.getElementById('tKilledMsg');
+const tSong = document.getElementById('tSong');
 
-  const modal=document.getElementById('modal');
-  const pwdInput=document.getElementById('pwd');
-  const doLoginBtn=document.getElementById('doLogin');
-  const closeModal=document.getElementById('closeModal');
-  const secretLogo=document.getElementById('secretLogo');
+/* ======= État local ======= */
+let cfg = { anchor_iso:null, paused:false };
 
-  const tHead=document.getElementById('tHead');
-  const tHeadImg=document.getElementById('tHeadImg');
-  const tKilledMsg=document.getElementById('tKilledMsg');
-  const tSong=document.getElementById('tSong');
+/* ======= Utils ======= */
+const pad=n=>String(n).padStart(2,'0');
+const fmtHMS=s=>{s=Math.max(0,Math.floor(s)); return `${pad(s/3600|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`;};
+const fmtMMSS=s=>{s=Math.max(0,Math.floor(s)); return `${Math.floor(s/60)}:${pad(s%60)}`;};
+const pretty=ms=>new Date(ms).toLocaleString('fr-FR',{dateStyle:'short', timeStyle:'medium'});
+const toISO=ms=>new Date(ms - new Date().getTimezoneOffset()*60000).toISOString().replace('.000Z','Z');
+const anchorMs=()=>Date.parse(cfg.anchor_iso);
 
-  /* ===== Etat ===== */
-  let cfg={anchor_iso:null, manual_offset_seconds:0, paused:false};
-  let isAdmin=false, adminPwd=null;
+/* ======= Ancre = AUJOURD’HUI 20:14:06 ======= */
+function setAnchorToday201406(){
+  const now = new Date();
+  const a = new Date(now);
+  a.setHours(20,14,6,0);  // 20:14:06 local
+  cfg.anchor_iso = toISO(a.getTime());
+  inputTime.value = '20:14';
+  elMode.textContent = 'Ancre = aujourd’hui 20:14:06 (cycle 49).';
+}
 
-  /* ===== Utils ===== */
-  const pad=n=>String(n).padStart(2,'0');
-  const fmtHMS=s=>{s=Math.max(0,Math.floor(s)); return `${pad(s/3600|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`;};
-  const fmtMMSS=s=>{s=Math.max(0,Math.floor(s)); return `${Math.floor(s/60)}:${pad(s%60)}`;}; // ex: 97:33
-  const pretty=ms=>new Date(ms).toLocaleString('fr-FR',{dateStyle:'short', timeStyle:'medium'});
-  const toISO=ms=>new Date(ms - new Date().getTimezoneOffset()*60000).toISOString().replace('.000Z','Z');
-  const anchorMs=()=>Date.parse(cfg.anchor_iso)+(cfg.manual_offset_seconds||0)*1000;
-  const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
+/* ======= LEDs ======= */
+function greensClosed(remainSec){
+  const seg = CLOSED_SEC / DOTS;                 // ≈24 min/LED
+  let g = DOTS - Math.ceil(remainSec / seg);     // 0..5 verts quand on approche
+  return Math.max(0, Math.min(DOTS, g));
+}
+function greensOpen(remainSec){
+  if (remainSec <= 5*60) return 0;               // 5 dernières minutes no LEDs
+  const eff = Math.min(60*60, remainSec - 5*60); // 60 min “progress bar”
+  return Math.max(0, Math.min(DOTS, Math.ceil(eff / (12*60))));
+}
 
-  /* ===== Ancre : AUJOURD’HUI 20:14:06 locale ===== */
-  function setAnchorToday201406(){
-    const now=new Date();
-    const today=new Date(now); today.setHours(20,14,6,0);
-    cfg.anchor_iso = toISO(today.getTime());
-    cfg.manual_offset_seconds = 0;
-    elMode.textContent='Ancre fixée : aujourd’hui 20:14:06 (cycle 49).';
-    inputTime.value='20:14';
+/* ======= Rendu ======= */
+let lastMinute = -1;
+function render(force=false){
+  if(!cfg.anchor_iso){
+    elClock.textContent='--:--:--'; elUntil.textContent='--:--';
+    elStatusBig.textContent='OFFLINE'; elStatusBig.className='bigStatus closed';
+    elStatus.textContent='Initialisation…'; scheduleDiv.innerHTML=''; return;
   }
+  const now = Date.now();
+  const aMs = anchorMs();
+  const elapsed = (((now - aMs)/1000)%CYCLE_SEC + CYCLE_SEC)%CYCLE_SEC;
+  const isOpen = elapsed < OPEN_SEC;
+  const phaseSec = isOpen ? OPEN_SEC : CLOSED_SEC;
+  const phaseElapsed = isOpen ? elapsed : (elapsed - OPEN_SEC);
+  const remain = phaseSec - phaseElapsed;
 
-  /* ===== LEDs ===== */
-  function greenCountClosed(remainSec){
-    const seg = CLOSED_SEC / DOTS;                 // ~24 min/LED
-    let cnt = DOTS - Math.ceil(remainSec / seg);   // 0→5 verts en approchant de l’ouverture
-    return Math.max(0, Math.min(DOTS, cnt));
+  elUntil.textContent = fmtMMSS(remain);
+  elClock.textContent = fmtHMS(remain);
+  elStatus.className = 'status ' + (isOpen?'open':'closed');
+  elStatus.textContent = 'Hangar ' + (isOpen?'Open':'Closed') + (cfg.paused?' (Paused)':'');
+  elStatusBig.textContent = isOpen ? 'ONLINE' : 'OFFLINE';
+  elStatusBig.className = 'bigStatus ' + (isOpen?'open':'closed');
+  elSub.textContent = 'Prochaine transition ('+(isOpen?'fermeture':'ouverture')+') dans ' + fmtHMS(remain);
+
+  const g = isOpen ? greensOpen(remain) : greensClosed(remain);
+  for(let i=0;i<DOTS;i++) leds[i].className = 'led ' + (i<g?'g':'r');
+
+  // Prochaine ouverture/fermeture
+  const CYCLE_MS = CYCLE_SEC*1000;
+  const nextOpen = aMs + (Math.floor((now - aMs)/CYCLE_MS)+1)*CYCLE_MS;
+  const nextClose = aMs + OPEN_SEC*1000 + (Math.floor((now - aMs)/CYCLE_MS)+1)*CYCLE_MS;
+  elNext.textContent = `Prochaine fermeture : ${pretty(nextClose)} • Prochaine ouverture : ${pretty(nextOpen)}`;
+
+  const m = new Date(now).getMinutes();
+  if (force || m!==lastMinute){ lastMinute=m; updateSchedule(now); }
+}
+
+/* ======= Planning 24 h ======= */
+function updateSchedule(nowMs){
+  const a = anchorMs();
+  const cycleMs = CYCLE_SEC*1000;
+  const rows=[];
+  // dernière ouverture <= now
+  let n = Math.floor((nowMs - a)/cycleMs);
+  let openStart = a + n*cycleMs;
+  if (openStart > nowMs){ n--; openStart -= cycleMs; }
+  const horizon = nowMs + 24*3600*1000;
+
+  while (openStart < horizon){
+    const step = Math.round((openStart - a)/cycleMs);
+    const cycleNum = ANCHOR_CYCLE + step;
+    const closeTime = openStart + OPEN_SEC*1000;
+    if (openStart >= nowMs) rows.push({cycle:cycleNum, type:'on',  at:openStart});
+    if (closeTime>= nowMs) rows.push({cycle:cycleNum, type:'off', at:closeTime});
+    openStart += cycleMs;
   }
-  function greenCountOpen(remainSec){
-    if (remainSec <= 5*60) return 0;               // 5 dernières minutes “black”
-    const eff = Math.min(60*60, remainSec - 5*60); // 60 min de LEDs actives
-    return Math.max(0, Math.min(DOTS, Math.ceil(eff / (12*60))));
+  rows.sort((x,y)=>x.at-y.at);
+
+  let html = '<table><thead><tr><th>Cycle</th><th>Status</th><th>Local Time</th></tr></thead><tbody>';
+  for(const r of rows){
+    html += `<tr>
+      <td>${r.cycle}</td>
+      <td><span class="tag ${r.type==='on'?'on':'off'}">${r.type==='on'?'Online':'Offline'}</span></td>
+      <td>${pretty(r.at)}</td>
+    </tr>`;
   }
+  html += '</tbody></table>';
+  scheduleDiv.innerHTML = html;
+}
 
-  /* ===== Rendu + Planning 24 h ===== */
-  let lastMinute=-1;
-  function render(force=false){
-    if(!cfg.anchor_iso){
-      elClock.textContent='--:--:--'; elUntil.textContent='--:--';
-      elStatus.className='status closed'; elStatus.textContent='Initialisation…';
-      elSub.textContent='Aucune ancre définie'; elNext.textContent='—'; scheduleDiv.innerHTML=''; return;
-    }
-    const now=Date.now();
-    const elapsed=(((now-anchorMs())/1000)%CYCLE_SEC+CYCLE_SEC)%CYCLE_SEC;
-    const isOpen = elapsed < OPEN_SEC;
-    const phaseSec = isOpen ? OPEN_SEC : CLOSED_SEC;
-    const phaseElapsed = isOpen ? elapsed : (elapsed-OPEN_SEC);
-    const remain = phaseSec - phaseElapsed;
+/* ======= Privacy toggle ======= */
+function setPrivacyVisibility(show){
+  ppSection.style.display = show ? 'block' : 'none';
+  ppSection.setAttribute('aria-hidden', String(!show));
+  ppBtn.setAttribute('aria-expanded', String(show));
+  if (show) ppSection.scrollIntoView({behavior:'smooth'});
+}
+ppBtn.addEventListener('click', (e)=>{
+  e.preventDefault();
+  const showing = ppSection.style.display==='block';
+  setPrivacyVisibility(!showing);
+  if(!showing) history.replaceState(null,'','#privacy'); else history.replaceState(null,'',' ');
+});
+if (location.hash === '#privacy') setPrivacyVisibility(true);
 
-    elUntil.textContent = fmtMMSS(remain);
-    elClock.textContent = fmtHMS(remain);
-    elStatus.className='status '+(isOpen?'open':'closed');
-    elStatus.textContent = 'Hangar '+(isOpen?'Open':'Closed') + (cfg.paused?' (Paused)':'');
-    elSub.textContent = 'Prochaine transition ('+(isOpen?'fermeture':'ouverture')+') dans '+fmtHMS(remain);
+/* ======= Admin caché minimal ======= */
+let isAdmin=false;
+function setAdminUI(v){ isAdmin=v; adminPanel.style.display=v?'flex':'none'; }
+secretLogo.addEventListener('dblclick', ()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); });
+document.addEventListener('keydown', (e)=>{ if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='a'){ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }});
+if (location.hash==='#admin'){ setTimeout(()=>{ modal.style.display='flex'; }, 50); }
+document.getElementById('doLogin').onclick=()=>{ if(!pwdInput.value.trim()) return alert('Mot de passe ?'); setAdminUI(true); modal.style.display='none'; };
+document.getElementById('closeModal').onclick=()=>{ modal.style.display='none'; };
+btnLogout.onclick=()=> setAdminUI(false);
 
-    const green = isOpen ? greenCountOpen(remain) : greenCountClosed(remain);
-    for(let i=0;i<DOTS;i++) leds[i].className='led '+(i<green?'g':'r');
+btnPublish.onclick=()=>{
+  const v=inputTime.value.trim(); if(!v) return alert('Indique HH:MM');
+  const [hh,mm]=v.split(':').map(Number);
+  const d=new Date(); d.setHours(hh,mm,0,0);
+  // si l'heure saisie est dans le futur on prend la veille
+  if(d.getTime()>Date.now()) d.setDate(d.getDate()-1);
+  cfg.anchor_iso = toISO(d.getTime());
+  render(true);
+};
+btnPause.onclick=()=>{ cfg.paused=!cfg.paused; render(true); };
 
-    const nClose=nextAfter(anchorMs()+OPEN_SEC*1000, CYCLE_SEC*1000, now);
-    const nOpen =nextAfter(anchorMs(),                CYCLE_SEC*1000, now);
-    elNext.textContent = `Prochaine fermeture : ${pretty(nClose)} • Prochaine ouverture : ${pretty(nOpen)}`;
+/* ======= Widget Nain ======= */
+function setNainKilled(k){ if(k){ tHead.style.display='none'; tKilledMsg.style.display='block'; } else { tHead.style.display='flex'; tKilledMsg.style.display='none'; } }
+tHeadImg.addEventListener('click', async ()=>{
+  try{ await tSong.play(); }catch{}
+  setNainKilled(true);   // pas de persistance → re-cliquable à chaque refresh
+});
+setNainKilled(false);
 
-    const m=new Date(now).getMinutes();
-    if(force || m!==lastMinute){ lastMinute=m; updateSchedule(now); }
-  }
-
-  function updateSchedule(nowMs){
-    const rows=[];
-    const horizon = nowMs + 24*3600*1000;
-    const a = anchorMs();
-    const cycleMs = CYCLE_SEC*1000;
-
-    // Dernière ouverture passée
-    let n = Math.floor((nowMs - a)/cycleMs);
-    let openStart = a + n*cycleMs;
-    if (openStart > nowMs){ n--; openStart -= cycleMs; }
-
-    while (openStart < horizon){
-      const step = Math.round((openStart - a)/cycleMs); // entier sûr
-      const cycleNum = ANCHOR_CYCLE + step;
-      const closeTime = openStart + OPEN_SEC*1000;
-      if (openStart >= nowMs) rows.push({cycle:cycleNum, type:'on',  at: openStart});
-      if (closeTime >= nowMs) rows.push({cycle:cycleNum, type:'off', at: closeTime});
-      openStart += cycleMs;
-    }
-
-    rows.sort((a,b)=>a.at-b.at);
-
-    let html = '<table><thead><tr><th>Cycle</th><th>Status</th><th>Local Time</th></tr></thead><tbody>';
-
-    // Ligne “en cours” si ouvert (facultative)
-    const curOpenStart = a + Math.floor((nowMs - a)/cycleMs)*cycleMs;
-    const curCycle = ANCHOR_CYCLE + Math.round((curOpenStart - a)/cycleMs);
-    const curClose = curOpenStart + OPEN_SEC*1000;
-    if (curOpenStart <= nowMs && nowMs < curClose){
-      html += `<tr><td>${curCycle}</td><td><span class="tag on">Online (en cours)</span></td><td>Fermeture à ${pretty(curClose)}</td></tr>`;
-    }
-
-    for(const r of rows){
-      if(r.at < nowMs) continue;
-      html += `<tr>
-        <td>${r.cycle}</td>
-        <td><span class="tag ${r.type==='on'?'on':'off'}">${r.type==='on'?'Online':'Offline'}</span></td>
-        <td>${pretty(r.at)}</td>
-      </tr>`;
-    }
-    html += '</tbody></table>';
-    scheduleDiv.innerHTML = html;
-  }
-
-  /* ===== Init : ancre sur AUJOURD’HUI 20:14:06 (cycle 49) ===== */
-  function loadCfg(){ setAnchorToday201406(); render(true); }
-
-  /* ===== Admin caché ===== */
-  function setAdminUI(v){ isAdmin=v; adminPanel.style.display=v?'flex':'none'; if(!v) adminPwd=null; }
-  secretLogo.addEventListener('dblclick', ()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); });
-  document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='a'){ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } });
-  if (location.hash === '#admin'){ setTimeout(()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }, 60); }
-  doLoginBtn.onclick= ()=>{ adminPwd=pwdInput.value.trim(); if(!adminPwd){ alert('Entre le mot de passe'); return; } setAdminUI(true); modal.style.display='none'; };
-  closeModal.onclick=()=>{ modal.style.display='none'; };
-  btnLogout.onclick=()=> setAdminUI(false);
-
-  function toISOFromHHMM(hhmm){
-    const [hh,mm]=hhmm.split(':').map(Number);
-    const now=new Date(); const d=new Date(now);
-    d.setHours(hh,mm,0,0); if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1);
-    return toISO(d.getTime());
-  }
-  function applyAnchor(iso, pausedFlag){
-    cfg.anchor_iso=iso;
-    if(typeof pausedFlag==='boolean') cfg.paused=pausedFlag;
-    render(true);
-  }
-  btnPublish.onclick= ()=>{ const v=inputTime.value.trim(); if(!v) return alert('Indique HH:MM'); applyAnchor(toISOFromHHMM(v)); };
-  btnPause.onclick   = ()=>{ applyAnchor(cfg.anchor_iso, !cfg.paused); };
-  btnReload.onclick  = loadCfg;
-  btnForceOpen.onclick  = ()=> applyAnchor(toISO(Date.now()));
-  btnForceClosed.onclick= ()=> applyAnchor(toISO(Date.now() - OPEN_SEC*1000 - 1000));
-  btnSyncCloseIn.onclick= ()=>{ const x=parseInt(inputMinsToClose.value,10); if(Number.isNaN(x)||x<0||x>65) return alert('0–65'); applyAnchor(toISO(Date.now() - (OPEN_SEC*1000 - x*60*1000))); };
-  btnSyncOpenIn.onclick = ()=>{ const x=parseInt(inputMinsToOpen.value,10); if(Number.isNaN(x)||x<0||x>120) return alert('0–120'); applyAnchor(toISO(Date.now() - (CYCLE_SEC*1000 - x*60*1000))); };
-
-  /* ===== Privacy toggle ===== */
-  function setPrivacyVisibility(show){
-    ppSection.style.display = show ? 'block' : 'none';
-    ppSection.setAttribute('aria-hidden', String(!show));
-    ppBtn.setAttribute('aria-expanded', String(show));
-    if (show) ppSection.scrollIntoView({behavior:'smooth'});
-  }
-  function togglePrivacy(e){
-    e && e.preventDefault();
-    const showing = ppSection.style.display === 'block';
-    setPrivacyVisibility(!showing);
-    if (!showing) history.replaceState(null,'','#privacy'); else history.replaceState(null,'',' ');
-  }
-  ppBtn.addEventListener('click', togglePrivacy);
-  if (location.hash === '#privacy') setPrivacyVisibility(true);
-
-  /* ===== T : son + message — RESET à chaque refresh ===== */
-  function setTKilledUI(killed){
-    if(killed){ tHead.style.display='none'; tKilledMsg.style.display='block'; }
-    else      { tHead.style.display='flex'; tKilledMsg.style.display='none'; }
-  }
-  tHeadImg.addEventListener('click', async ()=>{
-    try{ await tSong.play(); }catch{}
-    setTKilledUI(true);  // pas de localStorage → re-cliquable à chaque refresh
-  });
-  setTKilledUI(false);
-
-  /* ===== Tick & Go ===== */
-  setInterval(()=>{ if(!cfg.paused) render(); },1000);
-  loadCfg();
+/* ======= Go ======= */
+function boot(){ setAnchorToday201406(); render(true); setInterval(()=>{ if(!cfg.paused) render(); }, 1000); }
+boot();
 </script>
 </body>
 </html>
