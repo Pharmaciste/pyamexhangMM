@@ -60,6 +60,8 @@
   .privacy{display:none; margin-top:16px}
   .privacy .box{background:var(--panel); border:1px solid var(--panel-border); border-radius:16px; padding:16px; box-shadow:0 12px 30px var(--shadow)}
   .privacy h2{margin:0 0 10px; font-size:20px; font-weight:900}
+  .privacy h3{margin:16px 0 6px; font-size:16px; font-weight:800}
+  .privacy p, .privacy li{color:#dbeafe}
 
   /* Admin */
   .btn{padding:9px 12px; border-radius:12px; border:1px solid var(--panel-border); background:#0f172a; color:#fff; cursor:pointer}
@@ -135,6 +137,7 @@
           <input class="num" type="number" id="minsToOpen" min="0" max="120" placeholder="mins" />
           <button class="btn" id="syncOpenIn">Ouverture dans X min</button>
         </div>
+        <div class="meta">Indique l’heure <b>locale</b> de la dernière ouverture observée. Le site se met à jour en continu, sans intervention.</div>
       </div>
     </section>
 
@@ -145,7 +148,30 @@
     <section class="privacy" id="privacy" aria-hidden="true">
       <div class="box">
         <h2>Privacy Policy</h2>
-        <p>We do not collect personal data. Preferences peuvent être stockées en Local Storage. Si un backend est présent, seules les infos de timer global sont échangées.</p>
+        <p><em>Effective Date: September 8, 2025</em></p>
+
+        <p>Welcome! Your privacy matters to us. This Policy explains what we do (and don’t) collect, how we may use cookies/ads in the future, and your rights.</p>
+
+        <h3>Information We Collect</h3>
+        <p>We do <strong>not</strong> collect, sell, or share personal data. Timer preferences are saved in your browser’s <strong>Local Storage</strong> for convenience. This data stays on your device and is never transmitted to our servers.</p>
+
+        <h3>Cookies &amp; Tracking</h3>
+        <p>We currently do not use cookies. In the future, we may enable cookies or similar technologies to show ads (e.g., Google AdSense, Ezoic). These may process non-identifiable data (e.g., page views) to serve relevant ads. You can control or delete cookies in your browser settings at any time.</p>
+
+        <h3>Third-Party Services (Ads)</h3>
+        <p>If/when ads are enabled, third-party ad networks (e.g., Google AdSense, Ezoic) may use cookies and similar tech to deliver and measure ads. Please review their respective privacy policies for details on their processing.</p>
+
+        <h3>Your Rights</h3>
+        <p>Depending on your location, you may have rights under laws such as <strong>GDPR</strong> (EU/EEA/UK) or <strong>CCPA/CPRA</strong> (California), including access, correction, deletion, objection/restriction, and withdrawing consent (where applicable). Because we do not collect personal data, these rights mainly relate to cookie preferences you control in your browser if/when ads are enabled.</p>
+
+        <h3>Data Retention</h3>
+        <p>We do not maintain user profiles or store personal data. Local Storage data remains on your device until you clear it (e.g., “Clear Site Data” in your browser).</p>
+
+        <h3>Children’s Privacy</h3>
+        <p>This site is for a general audience and does not knowingly collect information from children under 13 (or higher local age threshold).</p>
+
+        <h3>Changes to This Policy</h3>
+        <p>We may update this Policy from time to time. We will post changes here with a new Effective Date. Please check this page periodically.</p>
       </div>
     </section>
 
@@ -175,10 +201,14 @@
 </div>
 
 <script>
-  /* ===== Cycle + LEDs ===== */
-  const OPEN_SEC   = 65*60;   // 65:00
-  const CLOSED_SEC = 7201;    // 2:00:01
-  const CYCLE_SEC  = OPEN_SEC + CLOSED_SEC;
+  /* ===== Cycle exact demandé =====
+     - Fermeture observée à 18:14:05
+     - Réouverture observée à 20:14:06
+     → ouvert = 65:00, fermé = 2:00:01, période = 03:05:01
+  */
+  const OPEN_SEC   = 65*60;   // 3900
+  const CLOSED_SEC = 7201;    // 7201
+  const CYCLE_SEC  = OPEN_SEC + CLOSED_SEC; // 11101
   const DOTS=5;
 
   /* ===== Elements ===== */
@@ -218,7 +248,7 @@
   const tKilledMsg=document.getElementById('tKilledMsg');
   const tSong=document.getElementById('tSong');
 
-  /* ===== State (local fallback) ===== */
+  /* ===== Etat local ===== */
   let cfg={anchor_iso:null, manual_offset_seconds:0, paused:false};
   let isAdmin=false, adminPwd=null;
 
@@ -230,30 +260,30 @@
   const anchorMs=()=>Date.parse(cfg.anchor_iso)+(cfg.manual_offset_seconds||0)*1000;
   const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
 
-  /* ===== Fallback ancre (d’après ton tableau) =====
-     Online 09/09/2025 20:14:06 local  -> ancre d'ouverture */
-  function setFallbackFromDataset(){
+  /* ===== Ancre par défaut : dernière ouverture = 09/09/2025 20:14:06 locale ===== */
+  function setFallbackAnchor(){
     const d=new Date();
-    d.setFullYear(2025, 8, 9); // septembre (0-index)
-    d.setHours(20,14,6,0);
+    d.setFullYear(2025, 8, 9);   // sept (0-index)
+    d.setHours(20,14,6,0);       // 20:14:06 local
     cfg.anchor_iso = toISO(d.getTime());
     cfg.manual_offset_seconds = 0;
     elMode.textContent='Ancre locale : 09/09/2025 20:14:06 — cycle 65:00 / 2:00:01';
+    inputTime.value='20:14';
   }
 
   /* ===== LEDs ===== */
   function greenCountClosed(remainSec){
-    const seg = CLOSED_SEC / DOTS;                 // ~24 min/LED
-    let cnt = DOTS - Math.ceil(remainSec / seg);   // 0..5 (5 avant ouverture)
+    const seg = CLOSED_SEC / DOTS;                // ≈24 min par LED
+    let cnt = DOTS - Math.ceil(remainSec / seg);  // 0→5 verts en approchant de l’ouverture
     return Math.max(0, Math.min(DOTS, cnt));
   }
   function greenCountOpen(remainSec){
-    if (remainSec <= 5*60) return 0;               // “black” 5 dernières min
-    const eff = Math.min(60*60, remainSec - 5*60); // 60 min de LEDs actives
-    return Math.max(0, Math.min(DOTS, Math.ceil(eff / (12*60))));
+    if (remainSec <= 5*60) return 0;              // 5 dernières min : “black”
+    const eff = Math.min(60*60, remainSec - 5*60);// 60 min de LEDs actives
+    return Math.max(0, Math.min(DOTS, Math.ceil(eff / (12*60)))); // 5→0 verts
   }
 
-  /* ===== Rendu + Planning ===== */
+  /* ===== Rendu + planning 24h ===== */
   let lastMinute=-1;
   function render(force=false){
     if(!cfg.anchor_iso){
@@ -290,26 +320,26 @@
 
   function updateSchedule(nowMs){
     const rows=[];
-    const horizon = nowMs + 24*3600*1000; // +24h
+    const horizon = nowMs + 24*3600*1000;
     const a = anchorMs();
 
-    // dernière ouverture passée
+    // Début d’ouverture courant (dernière ouverture passée)
     const k = Math.floor((nowMs - a)/(CYCLE_SEC*1000));
     let openStart = a + k*CYCLE_SEC*1000;
     if (openStart > nowMs) openStart -= CYCLE_SEC*1000;
 
     while (openStart < horizon){
-      const closeTime = openStart + OPEN_SEC*1000;
+      const closeTime = openStart + OPEN_SEC*1000;   // ferme 65 min après chaque ouverture
       if (openStart >= nowMs) rows.push({type:'on', at: openStart});
       if (closeTime >= nowMs) rows.push({type:'off', at: closeTime});
-      openStart += CYCLE_SEC*1000;
+      openStart += CYCLE_SEC*1000;                  // + 03:05:01
     }
 
     rows.sort((a,b)=>a.at-b.at);
 
     let html = '<table><thead><tr><th>Évènement</th><th>Heure locale</th></tr></thead><tbody>';
 
-    // ligne “en cours”
+    // Si une fenêtre est en cours, l’indiquer
     const curOpenStart = a + Math.floor((nowMs - a)/(CYCLE_SEC*1000))*CYCLE_SEC*1000;
     const curClose = curOpenStart + OPEN_SEC*1000;
     if (curOpenStart <= nowMs && nowMs < curClose){
@@ -317,14 +347,14 @@
     }
 
     for(const r of rows){
-      if(r.at < nowMs) continue; // on masque les passés
+      if(r.at < nowMs) continue;
       html += `<tr><td><span class="tag ${r.type==='on'?'on':'off'}">${r.type==='on'?'Online':'Offline'}</span></td><td>${pretty(r.at)}</td></tr>`;
     }
     html += '</tbody></table>';
     scheduleDiv.innerHTML = html;
   }
 
-  /* ===== API (optionnel) ===== */
+  /* ===== API (facultatif) ===== */
   async function loadCfg(){
     try{
       const r=await fetch('/api/anchor?ts='+Date.now(),{cache:'no-store'});
@@ -333,13 +363,11 @@
       cfg.anchor_iso=js.anchor_iso||null;
       cfg.manual_offset_seconds=js.manual_offset_seconds||0;
       cfg.paused=!!js.paused;
-      if(!cfg.anchor_iso) setFallbackFromDataset();
+      if(!cfg.anchor_iso) setFallbackAnchor();
       elMode.textContent='Config chargée. Dernière MAJ : '+pretty(Date.parse(cfg.anchor_iso));
-      const d=new Date(); inputTime.value=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
       render(true);
     }catch{
-      setFallbackFromDataset();
-      const d=new Date(); inputTime.value=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      setFallbackAnchor();
       render(true);
     }
   }
@@ -362,7 +390,7 @@
   }
 
   function postAnchorOrLocal(iso, pausedFlag){
-    // Essaie le backend, sinon applique local
+    // Essaie backend, sinon local
     fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({password:adminPwd||'',anchor_iso:iso,manual_offset_seconds:0,paused:typeof pausedFlag==='boolean'?pausedFlag:cfg.paused})})
     .then(async r=>{
