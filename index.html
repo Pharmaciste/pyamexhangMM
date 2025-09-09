@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>MAMMON TIMER</title>
+<title>CZ Timers — Mammon</title>
 <meta name="color-scheme" content="dark">
 <style>
   :root{
@@ -37,7 +37,6 @@
   .badge{font-size:11px; font-weight:900; padding:4px 8px; border-radius:999px; background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111;}
   .header-right{display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end}
 
-  /* mini badge patch */
   .mini-badge{font-size:12px; line-height:1; color:var(--ok); background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.45); padding:6px 10px; border-radius:999px; white-space:nowrap}
 
   .panel{background:var(--panel); border:1px solid var(--panel-border); border-radius:16px; padding:18px; box-shadow:0 12px 30px var(--shadow); backdrop-filter: blur(6px)}
@@ -53,26 +52,18 @@
   .meta{margin-top:10px; font-size:12px; opacity:.9}
   .next{margin-top:12px; font-size:13px; opacity:.96}
 
-  /* bouton Privacy en bas */
   .pp-cta-wrap{margin:22px 0 8px; display:flex; justify-content:center}
   .pp-cta{padding:9px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:#0f172a; color:#fff; text-decoration:none}
   .pp-cta:hover{border-color:#334155}
 
-  /* Privacy */
   .privacy{display:none; margin-top:16px}
   .privacy .box{background:var(--panel); border:1px solid var(--panel-border); border-radius:16px; padding:16px; box-shadow:0 12px 30px var(--shadow)}
   .privacy h2{margin:0 0 10px; font-size:20px; font-weight:900}
   .privacy h3{margin:16px 0 6px; font-size:16px; font-weight:800}
   .privacy p, .privacy li{color:#dbeafe}
 
-  /* Admin buttons look */
   .btn{padding:9px 12px; border-radius:12px; border:1px solid var(--panel-border); background:#0f172a; color:#fff; cursor:pointer}
   .btn.primary{background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111; border-color:transparent; font-weight:900}
-
-  /* Message Discord */
-  .discord-msg{margin-bottom:16px; text-align:center; font-size:14px;}
-  .discord-msg a{color:var(--accent); font-weight:bold; text-decoration:none;}
-  .discord-msg a:hover{text-decoration:underline;}
 </style>
 </head>
 <body>
@@ -84,7 +75,7 @@
     <header>
       <div class="brand">
         <div class="brand-logo" id="secretLogo" aria-hidden="true" title=" "></div>
-        <div class="brand-title">MAMMON TIMER</div>
+        <div class="brand-title">CZ Timers</div>
         <span class="badge">LIVE</span>
       </div>
       <div class="header-right">
@@ -94,26 +85,20 @@
       </div>
     </header>
 
-    <!-- Message Discord -->
-    <div class="panel discord-msg">
-      🚀 Envie de rejoindre la <strong>MAMMON</strong> ? 
-      <a href="https://discord.gg/aUBDScHG" target="_blank" rel="noopener">Rejoins notre Discord ici !</a>
-    </div>
-
     <!-- Panel Timer -->
     <section class="panel">
       <h1>Executive Hangar Timer</h1>
       <div class="clock" id="clock">--:--:--</div>
 
       <div class="row" id="leds">
-        <div class="led g"></div><div class="led g"></div><div class="led g"></div><div class="led g"></div><div class="led g"></div>
+        <div class="led r"></div><div class="led r"></div><div class="led r"></div><div class="led r"></div><div class="led r"></div>
       </div>
 
       <div class="status closed" id="status">Hangar Closed</div>
       <div class="sub" id="subtitle">Prochaine transition dans --:--:--</div>
 
       <div class="next" id="nextTimes">Prochaine fermeture : — • Prochaine ouverture : —</div>
-      <div class="meta" id="modeMeta">Config globale chargée.</div>
+      <div class="meta" id="modeMeta">Chargement…</div>
 
       <!-- Admin (caché par défaut, s’affiche après login) -->
       <div class="admin" id="adminPanel" style="display:none">
@@ -185,9 +170,11 @@
 </div>
 
 <script>
-  /* ===== Réglages timer ===== */
-  const OPEN_MIN=60, CLOSED_MIN=120, DOTS=5;
-  const OPEN_SEC=OPEN_MIN*60, CLOSED_SEC=CLOSED_MIN*60, CYCLE_SEC=OPEN_SEC+CLOSED_SEC;
+  /* ===== Cycle exact + LEDs analogiques ===== */
+  const OPEN_SEC   = 65*60;   // 65:00
+  const CLOSED_SEC = 7201;    // ~120:01
+  const CYCLE_SEC  = OPEN_SEC + CLOSED_SEC;
+  const DOTS=5;
 
   /* ===== Éléments ===== */
   const elClock=document.getElementById('clock');
@@ -213,50 +200,82 @@
   const ppBtn=document.getElementById('ppBtn');
   const ppSection=document.getElementById('privacy');
 
-  /* ===== State global (API) ===== */
-  let cfg={anchor_iso:'2025-09-07T16:53:00Z', manual_offset_seconds:0, paused:false};
+  /* ===== State global (API ou fallback) ===== */
+  let cfg={anchor_iso:null, manual_offset_seconds:0, paused:false};
 
   /* ===== Utils ===== */
   const pad=n=>String(n).padStart(2,'0');
   const fmt=s=>{s=Math.max(0,Math.floor(s)); return `${pad(s/3600|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`;};
   const pretty=ms=>new Date(ms).toLocaleString('fr-FR',{dateStyle:'short', timeStyle:'short'});
+  const toISO=ms=>new Date(ms - new Date().getTimezoneOffset()*60000).toISOString().replace('.000Z','Z');
   const anchorMs=()=>Date.parse(cfg.anchor_iso)+(cfg.manual_offset_seconds||0)*1000;
   const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
 
-  /* ===== Timer render ===== */
+  function setFallbackToNext1628(){
+    const now=new Date();
+    const next=new Date(now); next.setHours(16,28,0,0);
+    if(next.getTime()<=now.getTime()) next.setDate(next.getDate()+1); // prochaine 16:28 locale
+    cfg.anchor_iso = toISO(next.getTime());
+    cfg.manual_offset_seconds = 0;
+    elMode.textContent='Config locale : prochaine ouverture à 16:28 (fallback) • '+pretty(next.getTime());
+  }
+
+  /* ===== LEDs : fermé 0→5 vertes (~24m) ; ouvert 5→0 (12m) + 5m black ===== */
+  function greenCountClosed(remainSec){
+    const seg = CLOSED_SEC / DOTS;              // ~24 min / LED
+    let cnt = DOTS - Math.ceil(remainSec / seg); // 0..5 (5 juste avant ouverture)
+    return Math.max(0, Math.min(DOTS, cnt));
+  }
+  function greenCountOpen(remainSec){
+    if (remainSec <= 5*60) return 0;            // 5 min finales sans LED (“black”)
+    const eff = Math.min(60*60, remainSec - 5*60); // 60 min LED-actives
+    return Math.max(0, Math.min(DOTS, Math.ceil(eff / (12*60))));
+  }
+
+  /* ===== Rendu ===== */
   function render(){
+    if(!cfg.anchor_iso){
+      elClock.textContent='--:--:--';
+      elStatus.className='status closed';
+      elStatus.textContent='Initialisation…';
+      elSub.textContent='Aucune ancre définie';
+      elNext.textContent='—';
+      return;
+    }
     const now=Date.now();
     const elapsed=(((now-anchorMs())/1000)%CYCLE_SEC+CYCLE_SEC)%CYCLE_SEC;
-    const isOpen=elapsed<OPEN_SEC;
-    const remain=isOpen ? OPEN_SEC-elapsed : CYCLE_SEC-elapsed;
+    const isOpen = elapsed < OPEN_SEC;
+    const phaseSec = isOpen ? OPEN_SEC : CLOSED_SEC;
+    const phaseElapsed = isOpen ? elapsed : (elapsed-OPEN_SEC);
+    const remain = phaseSec - phaseElapsed;
 
     elClock.textContent = fmt(remain);
     elStatus.className='status '+(isOpen?'open':'closed');
     elStatus.textContent = 'Hangar '+(isOpen?'Open':'Closed') + (cfg.paused?' (Paused)':'');
     elSub.textContent = 'Prochaine transition ('+(isOpen?'fermeture':'ouverture')+') dans '+fmt(remain);
 
-    const phaseSec=isOpen?OPEN_SEC:CLOSED_SEC;
-    const progress=remain/phaseSec;
-    let greenCount = isOpen ? Math.ceil(progress*DOTS) : DOTS - Math.ceil(progress*DOTS);
-    greenCount=Math.max(0,Math.min(DOTS,greenCount));
-    for(let i=0;i<DOTS;i++) leds[i].className='led '+(i<greenCount?'g':'r');
+    const green = isOpen ? greenCountOpen(remain) : greenCountClosed(remain);
+    for(let i=0;i<DOTS;i++) leds[i].className='led '+(i<green?'g':'r');
 
     const nClose=nextAfter(anchorMs()+OPEN_SEC*1000, CYCLE_SEC*1000, now);
     const nOpen =nextAfter(anchorMs(),                CYCLE_SEC*1000, now);
     elNext.textContent = `Prochaine fermeture : ${pretty(nClose)} • Prochaine ouverture : ${pretty(nOpen)}`;
   }
 
+  /* ===== API ===== */
   async function loadCfg(){
     try{
       const r=await fetch('/api/anchor?ts='+Date.now(),{cache:'no-store'});
-      if(!r.ok){ elMode.textContent='Erreur API: '+r.status; return; }
+      if(!r.ok) throw new Error(r.status);
       cfg=await r.json();
+      if(!cfg.anchor_iso){ setFallbackToNext1628(); }
       elMode.textContent='Config globale chargée. Dernière MAJ globale : '+pretty(Date.parse(cfg.anchor_iso));
       const d=new Date(); inputTime.value=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
       render();
-    }catch(err){
-      elMode.textContent='Erreur de chargement config';
-      console.error(err);
+    }catch(e){
+      setFallbackToNext1628();
+      const d=new Date(); inputTime.value='16:28';
+      render();
     }
   }
 
@@ -264,11 +283,10 @@
   let isAdmin=false, adminPwd=null;
   function setAdminUI(v){ isAdmin=v; adminPanel.style.display=v?'flex':'none'; if(!v) adminPwd=null; }
 
-  // SECRET TRIGGERS — ouvrir la fenêtre de login sans bouton visible
   const secretLogo = document.getElementById('secretLogo');
-  secretLogo.addEventListener('dblclick', ()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); });   // double-clic sur le logo
-  document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='a'){ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } }); // Ctrl+Shift+A
-  if (location.hash === '#admin'){ setTimeout(()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }, 50); } // URL …/#admin
+  secretLogo.addEventListener('dblclick', ()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); });
+  document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='a'){ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } });
+  if (location.hash === '#admin'){ setTimeout(()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }, 50); }
 
   doLoginBtn.onclick= ()=>{ adminPwd=pwdInput.value.trim(); if(!adminPwd){ alert('Entre le mot de passe'); return; } setAdminUI(true); modal.style.display='none'; };
   closeModal.onclick=()=>{ modal.style.display='none'; };
@@ -282,7 +300,7 @@
     const iso=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().replace('.000Z','Z');
     const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:adminPwd,anchor_iso:iso,manual_offset_seconds:0,paused:false})});
     if(!r.ok){ if(r.status===401){ setAdminUI(false); alert('Mot de passe incorrect'); return; } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
-    cfg=await r.json(); alert('✅ Mise à jour globale enregistrée'); loadCfg();
+    cfg=await r.json(); alert('✅ Mise à jour globale enregistrée'); elMode.textContent='Config globale chargée. Dernière MAJ globale : '+pretty(Date.parse(cfg.anchor_iso)); render();
   };
 
   document.getElementById('togglePauseGlobal').onclick= async ()=>{
@@ -294,7 +312,7 @@
 
   document.getElementById('reload').onclick= loadCfg;
 
-  /* ===== Privacy: bouton toggle (ouvre/ferme) ===== */
+  /* ===== Privacy: toggle (ouvre/ferme) ===== */
   function setPrivacyVisibility(show){
     ppSection.style.display = show ? 'block' : 'none';
     ppSection.setAttribute('aria-hidden', String(!show));
@@ -305,21 +323,14 @@
     e && e.preventDefault();
     const showing = ppSection.style.display === 'block';
     setPrivacyVisibility(!showing);
-    // Optionnel : synchroniser le hash (#privacy) uniquement quand ouvert
     if (!showing) { history.replaceState(null, '', '#privacy'); }
     else { history.replaceState(null, '', ' '); }
   }
   ppBtn.addEventListener('click', togglePrivacy);
-
-  // Si l'URL contient #privacy au chargement, on ouvre; sinon on laisse fermé.
-  if (location.hash === '#privacy') {
-    setPrivacyVisibility(true);
-  } else {
-    setPrivacyVisibility(false);
-  }
+  if (location.hash === '#privacy') setPrivacyVisibility(true);
 
   /* Go */
-  setInterval(render,1000);
+  setInterval(()=>{ if(!cfg.paused) render(); },1000);
   loadCfg();
 </script>
 </body>
