@@ -29,7 +29,7 @@
   .brand-title{font-weight:900; letter-spacing:.3px}
   .badge{font-size:11px; font-weight:900; padding:4px 8px; border-radius:999px; background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111;}
   .header-right{display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end}
-  .mini-badge{font-size:12px; line-height:1; color:var(--ok); background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.45); padding:6px 10px; border-radius:999px; white-space:nowrap}
+  .mini-badge{font-size:12px; line-height:1; color:var(--ok); background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.45); padding:6px 10px; border-radius:999px}
 
   .panel{background:var(--panel); border:1px solid var(--panel-border); border-radius:16px; padding:18px; box-shadow:0 12px 30px var(--shadow); backdrop-filter: blur(6px)}
   h1{margin:6px 0 10px; font-size:30px; font-weight:900}
@@ -82,12 +82,14 @@
     <!-- Header -->
     <header>
       <div class="brand">
-        <div class="brand-logo" id="secretLogo" aria-hidden="true"></div>
+        <div class="brand-logo" id="secretLogo" aria-hidden="true" title=" "></div>
         <div class="brand-title">CZ Timers</div>
         <span class="badge">LIVE</span>
       </div>
       <div class="header-right">
-        <span class="mini-badge" id="patchBadge">Updated for Star Citizen Patch 4.3.0-LIVE (Hotfix 10188864)</span>
+        <span class="mini-badge" id="patchBadge" title="Star Citizen patch">
+          Updated for Star Citizen Patch 4.3.0-LIVE (Hotfix 10188864)
+        </span>
       </div>
     </header>
 
@@ -133,7 +135,6 @@
           <input class="num" type="number" id="minsToOpen" min="0" max="120" placeholder="mins" />
           <button class="btn" id="syncOpenIn">Ouverture dans X min</button>
         </div>
-        <div class="meta">Indique l’heure <b>locale</b> de la dernière ouverture observée, ou utilise les boutons de contrôle. Le site se mettra à jour en continu.</div>
       </div>
     </section>
 
@@ -153,9 +154,9 @@
 
 <!-- Tête cliquable -->
 <div class="t-head" id="tHead">
-  <img id="tHeadImg" src="t-head.png" alt="T" title="(touche le T pour des auec)" />
+  <img id="tHeadImg" src="/assets/t-head.png" alt="T" title="(touche le T pour des auec)" />
   <div class="note">(touche le T pour des auec)</div>
-  <audio id="tSong" src="confused-song.mp3" preload="auto"></audio>
+  <audio id="tSong" src="/assets/confused-song.mp3" preload="auto"></audio>
 </div>
 <div class="t-killed" id="tKilledMsg">— tu a tuer le T bravo ! —</div>
 
@@ -174,9 +175,9 @@
 </div>
 
 <script>
-  /* ===== Cycle exact + LEDs ===== */
+  /* ===== Cycle + LEDs ===== */
   const OPEN_SEC   = 65*60;   // 65:00
-  const CLOSED_SEC = 7201;    // 2:00:01 (observé)
+  const CLOSED_SEC = 7201;    // 2:00:01
   const CYCLE_SEC  = OPEN_SEC + CLOSED_SEC;
   const DOTS=5;
 
@@ -217,7 +218,7 @@
   const tKilledMsg=document.getElementById('tKilledMsg');
   const tSong=document.getElementById('tSong');
 
-  /* ===== State global (API ou fallback) ===== */
+  /* ===== State (local fallback) ===== */
   let cfg={anchor_iso:null, manual_offset_seconds:0, paused:false};
   let isAdmin=false, adminPwd=null;
 
@@ -229,29 +230,30 @@
   const anchorMs=()=>Date.parse(cfg.anchor_iso)+(cfg.manual_offset_seconds||0)*1000;
   const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
 
-  /* ===== Fallback ancre à partir de ton planning (Online 09/09/2025 20:14:06 local) ===== */
+  /* ===== Fallback ancre (d’après ton tableau) =====
+     Online 09/09/2025 20:14:06 local  -> ancre d'ouverture */
   function setFallbackFromDataset(){
     const d=new Date();
-    d.setFullYear(2025, 8, 9); // mois 0-indexé: 8 = septembre
-    d.setHours(20,14,6,0);     // 20:14:06 local
+    d.setFullYear(2025, 8, 9); // septembre (0-index)
+    d.setHours(20,14,6,0);
     cfg.anchor_iso = toISO(d.getTime());
     cfg.manual_offset_seconds = 0;
-    elMode.textContent='Ancre locale (fallback) : 09/09/2025 20:14:06 — cycle 65:00 / 2:00:01';
+    elMode.textContent='Ancre locale : 09/09/2025 20:14:06 — cycle 65:00 / 2:00:01';
   }
 
   /* ===== LEDs ===== */
   function greenCountClosed(remainSec){
     const seg = CLOSED_SEC / DOTS;                 // ~24 min/LED
-    let cnt = DOTS - Math.ceil(remainSec / seg);   // 0..5 (5 juste avant ouverture)
+    let cnt = DOTS - Math.ceil(remainSec / seg);   // 0..5 (5 avant ouverture)
     return Math.max(0, Math.min(DOTS, cnt));
   }
   function greenCountOpen(remainSec){
-    if (remainSec <= 5*60) return 0;               // 5 dernières minutes : “black”
+    if (remainSec <= 5*60) return 0;               // “black” 5 dernières min
     const eff = Math.min(60*60, remainSec - 5*60); // 60 min de LEDs actives
     return Math.max(0, Math.min(DOTS, Math.ceil(eff / (12*60))));
   }
 
-  /* ===== Rendu + Planning 24 h ===== */
+  /* ===== Rendu + Planning ===== */
   let lastMinute=-1;
   function render(force=false){
     if(!cfg.anchor_iso){
@@ -291,50 +293,48 @@
     const horizon = nowMs + 24*3600*1000; // +24h
     const a = anchorMs();
 
-    // Trouver la dernière ouverture passée (début de fenêtre courante)
+    // dernière ouverture passée
     const k = Math.floor((nowMs - a)/(CYCLE_SEC*1000));
     let openStart = a + k*CYCLE_SEC*1000;
     if (openStart > nowMs) openStart -= CYCLE_SEC*1000;
 
-    // Générer toutes les fenêtres (open/close) dans [now, now+24h]
     while (openStart < horizon){
       const closeTime = openStart + OPEN_SEC*1000;
-      if (closeTime >= nowMs) rows.push({type:'off', at: closeTime});   // fermeture à …
-      const nextOpen = openStart + CYCLE_SEC*1000;
-      if (openStart >= nowMs) rows.push({type:'on', at: openStart});    // ouverture à …
-      if (nextOpen >= nowMs && nextOpen < horizon) rows.push({type:'on', at: nextOpen});
+      if (openStart >= nowMs) rows.push({type:'on', at: openStart});
+      if (closeTime >= nowMs) rows.push({type:'off', at: closeTime});
       openStart += CYCLE_SEC*1000;
     }
 
-    // Ordonner & dédoublonner
     rows.sort((a,b)=>a.at-b.at);
-    const seen=new Set(); const list=[];
-    for(const r of rows){ const key=r.type+'@'+r.at; if(!seen.has(key)){ seen.add(key); list.push(r); } }
 
-    // Rendu table
     let html = '<table><thead><tr><th>Évènement</th><th>Heure locale</th></tr></thead><tbody>';
-    // Ligne “en cours” (si ouvert)
+
+    // ligne “en cours”
     const curOpenStart = a + Math.floor((nowMs - a)/(CYCLE_SEC*1000))*CYCLE_SEC*1000;
     const curClose = curOpenStart + OPEN_SEC*1000;
     if (curOpenStart <= nowMs && nowMs < curClose){
       html += `<tr><td><span class="tag on">Online (en cours)</span></td><td>Fermeture à ${pretty(curClose)}</td></tr>`;
     }
-    for(const r of list){
-      if(r.at < nowMs) continue;
+
+    for(const r of rows){
+      if(r.at < nowMs) continue; // on masque les passés
       html += `<tr><td><span class="tag ${r.type==='on'?'on':'off'}">${r.type==='on'?'Online':'Offline'}</span></td><td>${pretty(r.at)}</td></tr>`;
     }
     html += '</tbody></table>';
     scheduleDiv.innerHTML = html;
   }
 
-  /* ===== API ===== */
+  /* ===== API (optionnel) ===== */
   async function loadCfg(){
     try{
       const r=await fetch('/api/anchor?ts='+Date.now(),{cache:'no-store'});
       if(!r.ok) throw new Error(r.status);
-      cfg=await r.json();
-      if(!cfg.anchor_iso){ setFallbackFromDataset(); }
-      elMode.textContent='Config globale chargée. Dernière MAJ : '+pretty(Date.parse(cfg.anchor_iso));
+      const js=await r.json();
+      cfg.anchor_iso=js.anchor_iso||null;
+      cfg.manual_offset_seconds=js.manual_offset_seconds||0;
+      cfg.paused=!!js.paused;
+      if(!cfg.anchor_iso) setFallbackFromDataset();
+      elMode.textContent='Config chargée. Dernière MAJ : '+pretty(Date.parse(cfg.anchor_iso));
       const d=new Date(); inputTime.value=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
       render(true);
     }catch{
@@ -345,9 +345,7 @@
   }
 
   /* ===== Admin ===== */
-  let adminShown=false;
-  function setAdminUI(v){ adminShown=v; adminPanel.style.display=v?'flex':'none'; if(!v) adminPwd=null; }
-  const secretLogo = document.getElementById('secretLogo');
+  function setAdminUI(v){ isAdmin=v; adminPanel.style.display=v?'flex':'none'; if(!v) adminPwd=null; }
   secretLogo.addEventListener('dblclick', ()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); });
   document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='a'){ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } });
   if (location.hash === '#admin'){ setTimeout(()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }, 50); }
@@ -361,34 +359,21 @@
     const now=new Date(); const d=new Date(now);
     d.setHours(hh,mm,0,0); if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1);
     return toISO(d.getTime());
-    }
+  }
 
   function postAnchorOrLocal(iso, pausedFlag){
-    if(!adminShown || !adminPwd){
-      cfg.anchor_iso=iso; if(typeof pausedFlag==='boolean') cfg.paused=pausedFlag;
-      render(true); elMode.textContent='Ancre locale appliquée : '+pretty(Date.parse(iso)); return;
-    }
+    // Essaie le backend, sinon applique local
     fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({password:adminPwd,anchor_iso:iso,manual_offset_seconds:0,paused:typeof pausedFlag==='boolean'?pausedFlag:cfg.paused})})
+      body:JSON.stringify({password:adminPwd||'',anchor_iso:iso,manual_offset_seconds:0,paused:typeof pausedFlag==='boolean'?pausedFlag:cfg.paused})})
     .then(async r=>{
-      if(!r.ok){ if(r.status===401){ setAdminUI(false); alert('Mot de passe incorrect'); return; }
-        const t=await r.text().catch(()=> ''); alert('Échec: '+r.status+' '+t);
-        cfg.anchor_iso=iso; render(true); return; }
+      if(!r.ok) throw new Error('POST failed');
       cfg=await r.json(); render(true);
     })
-    .catch(()=>{ cfg.anchor_iso=iso; render(true); });
+    .catch(()=>{ cfg.anchor_iso=iso; if(typeof pausedFlag==='boolean') cfg.paused=pausedFlag; render(true); });
   }
 
   btnPublish.onclick= ()=>{ const v=inputTime.value.trim(); if(!v) return alert('Indique HH:MM'); postAnchorOrLocal(isoFromHHMM(v)); };
-  btnPause.onclick   = async ()=>{
-    if(!adminShown || !adminPwd){ cfg.paused=!cfg.paused; render(true); return; }
-    try{
-      const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({password:adminPwd,anchor_iso:cfg.anchor_iso,manual_offset_seconds:cfg.manual_offset_seconds||0,paused:!cfg.paused})});
-      if(!r.ok){ if(r.status===401){ setAdminUI(false); alert('Mot de passe incorrect'); return; } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
-      cfg=await r.json(); render(true);
-    }catch{ cfg.paused=!cfg.paused; render(true); }
-  };
+  btnPause.onclick   = ()=>{ postAnchorOrLocal(cfg.anchor_iso, !cfg.paused); };
   btnReload.onclick  = loadCfg;
 
   btnForceOpen.onclick  = ()=>{ postAnchorOrLocal(toISO(Date.now())); };
@@ -415,33 +400,18 @@
   ppBtn.addEventListener('click', togglePrivacy);
   if (location.hash === '#privacy') setPrivacyVisibility(true);
 
-  /* ===== Tête : son + message persistant ===== */
+  /* ===== Tête : son + message (local) ===== */
   const LS_T_KILLED='t_killed';
   function setTKilledUI(killed){
     if(killed){ tHead.style.display='none'; tKilledMsg.style.display='block'; }
     else      { tHead.style.display='flex'; tKilledMsg.style.display='none'; }
   }
-  function postTKillFlag(){
-    // tentative côté serveur (optionnel). Fallback: LocalStorage.
-    fetch('/api/t-head',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({killed:true})})
-      .catch(()=>{ try{ localStorage.setItem(LS_T_KILLED,'1'); }catch{} });
-  }
   tHeadImg.addEventListener('click', async ()=>{
     try{ await tSong.play(); }catch{}
     setTKilledUI(true);
     try{ localStorage.setItem(LS_T_KILLED,'1'); }catch{}
-    postTKillFlag();
   });
-  // init T
-  (function(){
-    let killed=false;
-    try{ killed = localStorage.getItem(LS_T_KILLED)==='1'; }catch{}
-    setTKilledUI(killed);
-    // si backend : on peut tenter un GET pour état global
-    fetch('/api/t-head?ts='+Date.now()).then(r=>r.ok?r.json():null).then(js=>{
-      if(js && typeof js.killed==='boolean'){ setTKilledUI(js.killed); if(js.killed) try{localStorage.setItem(LS_T_KILLED,'1');}catch{} }
-    }).catch(()=>{});
-  })();
+  (function(){ let k=false; try{ k=localStorage.getItem(LS_T_KILLED)==='1'; }catch{} setTKilledUI(k); })();
 
   /* ===== Tick & Go ===== */
   setInterval(()=>{ if(!cfg.paused) render(); },1000);
