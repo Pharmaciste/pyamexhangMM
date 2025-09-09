@@ -16,51 +16,60 @@
        font:16px/1.55 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
   .wm{position:fixed;inset:0;background:url('/assets/mammon.png') center 40%/min(90vmin,1200px) no-repeat;
       opacity:.15;pointer-events:none;filter:drop-shadow(0 0 22px rgba(0,0,0,.65))}
-  .wrap{max-width:960px;margin:0 auto;padding:20px;position:relative;z-index:1}
+  .wrap{max-width:980px;margin:0 auto;padding:20px;position:relative;z-index:1}
 
   header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-  .brand{display:flex;align-items:center;gap:8px}
+  .brand{display:flex;align-items:center;gap:10px}
   .brand-logo{width:28px;height:28px;background:url('/assets/mammon.png') center/contain no-repeat;cursor:pointer}
   .brand h1{font-size:20px;font-weight:900;margin:0;color:var(--accent)}
   .badge{font-size:11px;font-weight:900;padding:4px 8px;border-radius:999px;
          background:#000;color:var(--accent);border:1px solid var(--accent)}
   .patch{font-size:13px;color:var(--ok)}
-  .patch-date{font-size:12px;opacity:.8;margin-top:2px}
+  .patch-date{font-size:12px;opacity:.85;margin-top:2px}
 
   .discord-bar{background:#1a1a1a;border:1px solid rgba(255,255,255,.1);border-radius:12px;
                padding:10px 14px;margin-bottom:16px;text-align:center}
   .discord-bar a{color:var(--accent2);font-weight:700;text-decoration:none}
 
   h2{font-size:22px;font-weight:900;margin:0 0 10px;color:var(--accent)}
-  .big{font:64px/1.2 monospace;margin:12px 0}
-  .big.open{color:var(--ok)}.big.closed{color:var(--danger)}
+  .big{font:64px/1.1 ui-monospace,monospace;margin:10px 0}
+  .big.open{color:var(--ok)} .big.closed{color:var(--danger)}
 
-  .until{font:14px monospace;opacity:.95;margin:6px 0}
-  .clock{font:56px/1 monospace;margin:10px 0;color:var(--accent)}
+  .until{font:14px ui-monospace,monospace;opacity:.95;margin:6px 0}
+  .clock{font:56px/1 ui-monospace,monospace;margin:10px 0;color:var(--accent)}
   .status{font-weight:900}
-  .status.open{color:var(--ok)}.status.closed{color:var(--danger)}
+  .status.open{color:var(--ok)} .status.closed{color:var(--danger)}
 
   .row{display:flex;gap:10px;justify-content:center;margin:12px 0}
   .led{width:22px;height:22px;border-radius:7px;background:#222;border:1px solid rgba(0,0,0,.6)}
   .led.g{background:var(--ok);box-shadow:0 0 14px rgba(34,197,94,.7)}
   .led.r{background:var(--danger);box-shadow:0 0 12px rgba(239,68,68,.6)}
 
+  .panel{background:var(--panel);border:1px solid var(--panel-border);border-radius:14px;padding:16px}
+
   .sched{margin-top:24px}
   table{width:100%;border-collapse:collapse;font-size:14px}
-  th,td{padding:8px 10px;border-top:1px solid rgba(255,255,255,.1)}
-  th{color:var(--accent)}
+  th,td{padding:8px 10px;border-top:1px solid rgba(255,255,255,.1);vertical-align:top}
+  th{color:var(--accent);text-align:left}
+  .cycle-cell{width:80px;font-weight:700;color:#e5e7eb}
+  .status-cell{width:140px}
+  .time-cell{white-space:nowrap}
   .tag{padding:2px 8px;border-radius:999px;font-size:12px}
   .tag.on{background:rgba(34,197,94,.12);color:var(--ok);border:1px solid rgba(34,197,94,.45)}
   .tag.off{background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.45)}
 
   /* Admin modal */
-  .modal{display:none;position:fixed;inset:0;z-index:20;align-items:center;justify-content:center;
+  .modal{display:none;position:fixed;inset:0;z-index:30;align-items:center;justify-content:center;
          background:rgba(0,0,0,.6)}
   .modal .box{background:#111;border:1px solid var(--panel-border);border-radius:12px;
-              padding:16px;width:100%;max-width:360px}
+              padding:16px;width:100%;max-width:380px}
   .modal h3{margin:0 0 10px;font-size:18px}
+  .field{margin:8px 0}
+  .field input{width:100%;padding:8px;border-radius:8px;border:1px solid #333;background:#0a0a0a;color:#fff}
   .btn{padding:8px 12px;border-radius:8px;background:#000;color:var(--accent);
-       border:1px solid var(--accent);cursor:pointer;margin-top:6px}
+       border:1px solid var(--accent);cursor:pointer;margin-right:6px}
+  .btn.danger{color:#fff;border-color:#ef4444;background:#ef4444}
+  .hint{font-size:12px;opacity:.75;margin-top:6px}
 </style>
 </head>
 <body>
@@ -90,139 +99,175 @@
     <h2>Executive Hangar Timer</h2>
     <div id="statusBig" class="big closed">OFFLINE</div>
     <div class="until">Time until next change: <span id="until">--:--:--</span></div>
+
     <div class="row" id="leds">
       <div class="led r"></div><div class="led r"></div><div class="led r"></div><div class="led r"></div><div class="led r"></div>
     </div>
+
     <div class="clock" id="clock">--:--:--</div>
     <div class="status closed" id="status">Hangar Closed</div>
     <div class="until" id="subtitle">Next transition in --:--</div>
     <div class="until" id="nextTimes">Next Close: — • Next Open: —</div>
-    <div class="sched"><h3>Schedule (24h)</h3><div id="schedule"></div></div>
+
+    <div class="sched">
+      <h3>Schedule (24h)</h3>
+      <div id="schedule"></div>
+    </div>
   </section>
 
 </div>
 
 <!-- Admin modal -->
 <div class="modal" id="modal">
-  <div class="box">
+  <div class="box" id="adminBox">
     <h3>Admin Panel</h3>
-    <label>Set last open (HH:MM): <input type="time" id="openTime" step="60"></label>
-    <button class="btn" id="publish">Apply</button>
-    <button class="btn" id="togglePause">Pause/Resume Hangar</button>
-    <button class="btn" id="closeModal">Close</button>
+
+    <div class="field">
+      <label for="adminPwd">Password</label>
+      <input type="password" id="adminPwd" placeholder="Enter admin password">
+    </div>
+    <div class="field">
+      <label for="openTime">Set last open (HH:MM)</label>
+      <input type="time" id="openTime" step="60">
+    </div>
+
+    <div class="field">
+      <button class="btn" id="btnLogin">Unlock</button>
+      <button class="btn" id="btnPublish" disabled>Apply</button>
+      <button class="btn" id="btnPause" disabled>Pause/Resume Hangar</button>
+      <button class="btn danger" id="btnClose">Close</button>
+    </div>
+    <div class="hint">Shortcut: Ctrl+Shift+A • Double-click the Mammon icon.</div>
   </div>
 </div>
 
 <script>
-const OPEN_SEC=65*60,CLOSED_SEC=2*3600+1,CYCLE_SEC=OPEN_SEC+CLOSED_SEC,CYCLE_MS=CYCLE_SEC*1000,DOTS=5;
-const ANCHOR=new Date();ANCHOR.setHours(20,14,6,0);let anchor_ms=ANCHOR.getTime();
+/* ====== Config ====== */
+const OPEN_SEC=65*60;                  // 65:00
+const CLOSED_SEC=2*3600+1;             // 2:00:01
+const CYCLE_SEC=OPEN_SEC+CLOSED_SEC;   // 03:05:01
+const CYCLE_MS=CYCLE_SEC*1000;
+const DOTS=5;
+const jhhvuxju12='mammon';              // 🔐 CHANGE THIS PASSWORD
+
+/* ====== Anchor (today 20:14:06) ====== */
+const ANCHOR=new Date();
+ANCHOR.setHours(20,14,6,0);
+let anchor_ms=ANCHOR.getTime();
+
+/* ====== State ====== */
 let paused=false;
+let isAdmin=false;
 
-const elClock=document.getElementById('clock'),
-elUntil=document.getElementById('until'),
-elStatus=document.getElementById('status'),
-elStatusBig=document.getElementById('statusBig'),
-elSub=document.getElementById('subtitle'),
-elNext=document.getElementById('nextTimes'),
-leds=document.getElementById('leds').children,
-scheduleDiv=document.getElementById('schedule'),
-patchDate=document.getElementById('patchDate');
+/* ====== DOM ====== */
+const elClock=document.getElementById('clock');
+const elUntil=document.getElementById('until');
+const elStatus=document.getElementById('status');
+const elStatusBig=document.getElementById('statusBig');
+const elSub=document.getElementById('subtitle');
+const elNext=document.getElementById('nextTimes');
+const leds=document.getElementById('leds').children;
+const scheduleDiv=document.getElementById('schedule');
+const patchDate=document.getElementById('patchDate');
 
-const secretLogo=document.getElementById('secretLogo'),
-modal=document.getElementById('modal'),
-inputTime=document.getElementById('openTime'),
-btnPublish=document.getElementById('publish'),
-btnPause=document.getElementById('togglePause'),
-closeModal=document.getElementById('closeModal');
+const secretLogo=document.getElementById('secretLogo');
+const modal=document.getElementById('modal');
+const inputPwd=document.getElementById('adminPwd');
+const inputTime=document.getElementById('openTime');
+const btnLogin=document.getElementById('btnLogin');
+const btnPublish=document.getElementById('btnPublish');
+const btnPause=document.getElementById('btnPause');
+const btnClose=document.getElementById('btnClose');
 
-const pad=n=>String(n).padStart(2,'0'),
-fmtHMS=s=>{s=Math.floor(s);return `${pad((s/3600)|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`;},
-fmtMMSS=s=>{s=Math.floor(s);return `${pad((s/60)|0)}:${pad(s%60)}`;},
-pretty=ms=>new Date(ms).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'});
+/* ====== Utils ====== */
+const pad=n=>String(n).padStart(2,'0');
+const fmtHMS=s=>{s=Math.floor(s);return `${pad((s/3600)|0)}:${pad(((s%3600)/60)|0)}:${pad(s%60)}`;};
+const fmtMMSS=s=>{s=Math.floor(s);return `${pad((s/60)|0)}:${pad(s%60)}`;};
+const pretty=ms=>new Date(ms).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'medium'});
 
-function greens(remain,isOpen){
+/* ====== LEDs logic (green -> red as time elapses) ====== */
+function ledCount(remain,isOpen){
   if(isOpen){
+    // During OPEN: progress LEDs from green to red as we approach close.
+    // Early = all green, last 5 min = 0 greens (all red).
     if(remain<=300) return 0;
-    const eff=Math.min(3600,remain-300);
-    return Math.min(DOTS,Math.ceil(eff/720));
+    const eff=Math.min(3600,remain-300);  // 60 minutes window
+    return Math.min(DOTS, Math.ceil(eff/(60*12))); // ~12 min per LED
   }else{
+    // During CLOSED: ~24 min per LED
     const seg=CLOSED_SEC/DOTS;
-    return Math.max(0,DOTS-Math.ceil(remain/seg));
+    return Math.max(0, DOTS - Math.ceil(remain/seg));
   }
 }
 
+/* ====== Next occurrence helper ====== */
 function nextAfter(start,step,now){return now<start?start:start+(Math.floor((now-start)/step)+1)*step;}
 
-let lastMin=-1;
+/* ====== Render loop ====== */
+let lastMinute=-1;
 function render(force=false){
   if(paused) return;
-  const now=Date.now(),elapsed=((now-anchor_ms)/1000%CYCLE_SEC+CYCLE_SEC)%CYCLE_SEC,isOpen=elapsed<OPEN_SEC;
-  const phaseSec=isOpen?OPEN_SEC:CLOSED_SEC,phaseElapsed=isOpen?elapsed:(elapsed-OPEN_SEC),remain=phaseSec-phaseElapsed;
 
-  elUntil.textContent=fmtHMS(remain);
-  elClock.textContent=fmtHMS(remain);
-  elSub.textContent='Next transition ('+(isOpen?'close':'open')+') in '+fmtMMSS(remain);
+  const now=Date.now();
+  const elapsed=((now-anchor_ms)/1000 % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
+  const isOpen=elapsed<OPEN_SEC;
 
+  const phaseSec=isOpen?OPEN_SEC:CLOSED_SEC;
+  const phaseElapsed=isOpen?elapsed:(elapsed-OPEN_SEC);
+  const remain=phaseSec-phaseElapsed;
+
+  // Timers (no decimals)
+  elUntil.textContent=fmtHMS(remain);           // HH:MM:SS
+  elClock.textContent=fmtHMS(remain);           // HH:MM:SS
+  elSub.textContent='Next transition ('+(isOpen?'close':'open')+') in '+fmtMMSS(remain); // MM:SS
+
+  // Status
   elStatus.textContent='Hangar '+(isOpen?'Open':'Closed');
   elStatus.className='status '+(isOpen?'open':'closed');
   elStatusBig.textContent=isOpen?'ONLINE':'OFFLINE';
   elStatusBig.className='big '+(isOpen?'open':'closed');
 
-  const g=greens(remain,isOpen);
-  for(let i=0;i<DOTS;i++)leds[i].className='led '+(i<g?'g':'r');
+  // LEDs (greens first, others red)
+  const g=ledCount(remain,isOpen);
+  for(let i=0;i<DOTS;i++) leds[i].className='led '+(i<g?'g':'r');
 
-  const nextOpen=nextAfter(anchor_ms,CYCLE_MS,now),
-        nextClose=nextAfter(anchor_ms+OPEN_SEC*1000,CYCLE_MS,now);
+  // Next events (pretty local date)
+  const nextOpen=nextAfter(anchor_ms, CYCLE_MS, now);
+  const nextClose=nextAfter(anchor_ms + OPEN_SEC*1000, CYCLE_MS, now);
   elNext.textContent=`Next Close: ${pretty(nextClose)} • Next Open: ${pretty(nextOpen)}`;
 
+  // Schedule refresh once per minute
   const m=new Date(now).getMinutes();
-  if(force||m!==lastMin){lastMin=m;updateSchedule(now);}
+  if(force || m!==lastMinute){ lastMinute=m; updateSchedule(now); }
 }
 
+/* ====== Schedule: two rows per cycle (Online / Offline) ====== */
 function updateSchedule(nowMs){
-  const rows=[],horizon=nowMs+24*3600*1000;
-  let n=Math.floor((nowMs-anchor_ms)/CYCLE_MS),open=anchor_ms+n*CYCLE_MS;
-  if(open>nowMs){n--;open-=CYCLE_MS;}
-  while(open<horizon){
-    const cyc=49+Math.round((open-anchor_ms)/CYCLE_MS),
-          close=open+OPEN_SEC*1000;
-    if(close>=nowMs){
-      rows.push({cyc,on:open,off:close});
+  const rows=[];
+  const horizon=nowMs+24*3600*1000;
+
+  // Find last open <= now
+  let n=Math.floor((nowMs - anchor_ms)/CYCLE_MS);
+  let openStart=anchor_ms + n*CYCLE_MS;
+  if(openStart>nowMs){ n--; openStart-=CYCLE_MS; }
+
+  while(openStart < horizon){
+    const cycleNum = 49 + Math.round((openStart - anchor_ms)/CYCLE_MS);
+    const closeTime = openStart + OPEN_SEC*1000;
+
+    // Push pair if any is in the future window (>= now)
+    if(closeTime>=nowMs || openStart>=nowMs){
+      rows.push({
+        cycle: cycleNum,
+        onAt: openStart,
+        offAt: closeTime
+      });
     }
-    open+=CYCLE_MS;
+    openStart += CYCLE_MS;
   }
-  rows.sort((a,b)=>a.on-b.on);
-  let html='<table><thead><tr><th>Cycle</th><th>Status</th><th>Local Time</th></tr></thead><tbody>';
+
+  // Build table: 2 rows per cycle, cycle number on the first row only
+  let html = '<table><thead><tr><th class="cycle-cell">Cycle</th><th class="status-cell">Status</th><th class="time-cell">Local Time</th></tr></thead><tbody>';
   for(const r of rows){
-    html+=`<tr>
-      <td>${r.cyc}</td>
-      <td><span class="tag on">Online</span> • <span class="tag off">Offline</span></td>
-      <td>${pretty(r.on)} → ${pretty(r.off)}</td>
-    </tr>`;
-  }
-  html+='</tbody></table>';scheduleDiv.innerHTML=html;
-}
-
-// Admin modal
-secretLogo.ondblclick=()=>{modal.style.display='flex';};
-document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='a'){modal.style.display='flex';}});
-closeModal.onclick=()=>modal.style.display='none';
-btnPause.onclick=()=>{paused=!paused;};
-btnPublish.onclick=()=>{
-  const v=inputTime.value;
-  if(!v) return;
-  const [hh,mm]=v.split(':').map(Number);
-  const d=new Date();d.setHours(hh,mm,6,0);
-  if(d.getTime()>Date.now()) d.setDate(d.getDate()-1);
-  anchor_ms=d.getTime();
-  render(true);
-  modal.style.display='none';
-};
-
-// Patch date (site last updated)
-patchDate.textContent="Site updated: "+new Date().toLocaleString();
-
-render(true);setInterval(()=>render(),1000);
-</script>
-</body>
-</html>
+    html += `<tr>
+      <
