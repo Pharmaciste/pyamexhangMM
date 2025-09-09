@@ -8,7 +8,7 @@
 <style>
   :root{
     --bg:#0a0a0a; --panel:#111111ee; --panel-border:rgba(255,255,255,.08);
-    --text:#fefce8; --ok:#facc15; --danger:#ef4444;
+    --text:#fefce8; --ok:#22c55e; --danger:#ef4444;
     --accent:#facc15; --accent2:#fde047;
   }
   *{box-sizing:border-box}
@@ -22,8 +22,8 @@
   .brand{display:flex;align-items:center;gap:8px}
   .brand h1{font-size:20px;font-weight:900;margin:0;color:var(--accent)}
   .badge{font-size:11px;font-weight:900;padding:4px 8px;border-radius:999px;
-         background:linear-gradient(90deg,var(--accent),var(--accent2));color:#111}
-  .patch{font-size:13px;color:var(--accent)}
+         background:#000;color:var(--accent);border:1px solid var(--accent)}
+  .patch{font-size:13px;color:var(--ok)}
 
   .discord-bar{background:#1a1a1a;border:1px solid rgba(255,255,255,.1);border-radius:12px;
                padding:10px 14px;margin-bottom:16px;text-align:center}
@@ -31,15 +31,16 @@
 
   h2{font-size:22px;font-weight:900;margin:0 0 10px;color:var(--accent)}
   .big{font:64px/1.2 monospace;margin:12px 0}
-  .big.open{color:var(--accent)}.big.closed{color:var(--danger)}
+  .big.open{color:var(--ok)}.big.closed{color:var(--danger)}
 
   .until{font:14px monospace;opacity:.95;margin:6px 0}
   .clock{font:56px/1 monospace;margin:10px 0;color:var(--accent)}
-  .status{font-weight:900}.status.open{color:var(--accent)}.status.closed{color:var(--danger)}
+  .status{font-weight:900}
+  .status.open{color:var(--ok)}.status.closed{color:var(--danger)}
 
   .row{display:flex;gap:10px;justify-content:center;margin:12px 0}
   .led{width:22px;height:22px;border-radius:7px;background:#222;border:1px solid rgba(0,0,0,.6)}
-  .led.g{background:var(--accent);box-shadow:0 0 14px rgba(250,204,21,.7)}
+  .led.g{background:var(--ok);box-shadow:0 0 14px rgba(34,197,94,.7)}
   .led.r{background:var(--danger);box-shadow:0 0 12px rgba(239,68,68,.6)}
 
   .sched{margin-top:24px}
@@ -47,8 +48,8 @@
   th,td{padding:8px 10px;border-top:1px solid rgba(255,255,255,.1)}
   th{color:var(--accent)}
   .tag{padding:2px 8px;border-radius:999px;font-size:12px}
-  .tag.on{background:rgba(250,204,21,.12);color:var(--accent);border:1px solid rgba(250,204,21,.5)}
-  .tag.off{background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.5)}
+  .tag.on{background:rgba(34,197,94,.12);color:var(--ok);border:1px solid rgba(34,197,94,.45)}
+  .tag.off{background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.45)}
 </style>
 </head>
 <body>
@@ -77,7 +78,7 @@
     <div class="row" id="leds">
       <div class="led r"></div><div class="led r"></div><div class="led r"></div><div class="led r"></div><div class="led r"></div>
     </div>
-    <div class="clock" id="clock">--:--</div>
+    <div class="clock" id="clock">--:--:--</div>
     <div class="status closed" id="status">Hangar Closed</div>
     <div class="until" id="subtitle">Next transition in --:--</div>
     <div class="until" id="nextTimes">Next Close: — • Next Open: —</div>
@@ -94,7 +95,7 @@ elStatus=document.getElementById('status'),elStatusBig=document.getElementById('
 elSub=document.getElementById('subtitle'),elNext=document.getElementById('nextTimes'),
 leds=document.getElementById('leds').children,scheduleDiv=document.getElementById('schedule');
 const pad=n=>String(n).padStart(2,'0'),
-fmtHM=s=>`${pad((s/3600)|0)}:${pad((s%3600)/60|0)}`,
+fmtHMS=s=>`${pad((s/3600)|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`,
 fmtMMSS=s=>`${Math.floor(s/60)}:${pad(s%60)}`,
 pretty=ms=>new Date(ms).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'});
 function greensClosed(r){const seg=CLOSED_SEC/DOTS;return Math.max(0,Math.min(DOTS,DOTS-Math.ceil(r/seg))); }
@@ -104,22 +105,36 @@ let lastMin=-1;
 function render(force=false){
   const now=Date.now(),elapsed=((now-anchor_ms)/1000%CYCLE_SEC+CYCLE_SEC)%CYCLE_SEC,isOpen=elapsed<OPEN_SEC;
   const phaseSec=isOpen?OPEN_SEC:CLOSED_SEC,phaseElapsed=isOpen?elapsed:(elapsed-OPEN_SEC),remain=phaseSec-phaseElapsed;
-  elUntil.textContent=fmtMMSS(remain);
-  elClock.textContent=fmtHM(remain);
-  elStatus.textContent='Hangar '+(isOpen?'Open':'Closed');elStatus.className='status '+(isOpen?'open':'closed');
-  elStatusBig.textContent=isOpen?'ONLINE':'OFFLINE';elStatusBig.className='big '+(isOpen?'open':'closed');
+
+  // Timers
+  elUntil.textContent=fmtMMSS(remain);     // mm:ss
+  elClock.textContent=fmtHMS(remain);      // hh:mm:ss
   elSub.textContent='Next transition ('+(isOpen?'close':'open')+') in '+fmtMMSS(remain);
+
+  // Status
+  elStatus.textContent='Hangar '+(isOpen?'Open':'Closed');
+  elStatus.className='status '+(isOpen?'open':'closed');
+  elStatusBig.textContent=isOpen?'ONLINE':'OFFLINE';
+  elStatusBig.className='big '+(isOpen?'open':'closed');
+
+  // LEDs
   const g=isOpen?greensOpen(remain):greensClosed(remain);
   for(let i=0;i<DOTS;i++)leds[i].className='led '+(i<g?'g':'r');
+
+  // Next events
   const nextOpen=nextAfter(anchor_ms,CYCLE_MS,now),nextClose=nextAfter(anchor_ms+OPEN_SEC*1000,CYCLE_MS,now);
   elNext.textContent=`Next Close: ${pretty(nextClose)} • Next Open: ${pretty(nextOpen)}`;
-  const m=new Date(now).getMinutes();if(force||m!==lastMin){lastMin=m;updateSchedule(now);}
+
+  // Update schedule once per minute
+  const m=new Date(now).getMinutes();
+  if(force||m!==lastMin){lastMin=m;updateSchedule(now);}
 }
 function updateSchedule(nowMs){
   const rows=[],horizon=nowMs+24*3600*1000;let n=Math.floor((nowMs-anchor_ms)/CYCLE_MS),open=anchor_ms+n*CYCLE_MS;
   if(open>nowMs){n--;open-=CYCLE_MS;}while(open<horizon){
     const cyc=49+Math.round((open-anchor_ms)/CYCLE_MS),close=open+OPEN_SEC*1000;
-    if(open>=nowMs)rows.push({cyc,type:'on',at:open});if(close>=nowMs)rows.push({cyc,type:'off',at:close});
+    if(open>=nowMs)rows.push({cyc,type:'on',at:open});
+    if(close>=nowMs)rows.push({cyc,type:'off',at:close});
     open+=CYCLE_MS;
   }
   rows.sort((a,b)=>a.at-b.at);
