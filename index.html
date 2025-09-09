@@ -148,7 +148,7 @@ const CLOSED_SEC=2*3600+1;             // 2:00:01
 const CYCLE_SEC=OPEN_SEC+CLOSED_SEC;   // 03:05:01
 const CYCLE_MS=CYCLE_SEC*1000;
 const DOTS=5;
-const jhhvuxju12='mammon';              // 🔐 CHANGE THIS PASSWORD
+const ADMIN_PWD='mammon';              // 🔐 CHANGE THIS PASSWORD
 
 /* ====== Anchor (today 20:14:06) ====== */
 const ANCHOR=new Date();
@@ -270,4 +270,77 @@ function updateSchedule(nowMs){
   let html = '<table><thead><tr><th class="cycle-cell">Cycle</th><th class="status-cell">Status</th><th class="time-cell">Local Time</th></tr></thead><tbody>';
   for(const r of rows){
     html += `<tr>
-      <
+      <td class="cycle-cell">${r.cycle}</td>
+      <td class="status-cell"><span class="tag on">Online</span></td>
+      <td class="time-cell">${pretty(r.onAt)}</td>
+    </tr>
+    <tr>
+      <td class="cycle-cell"></td>
+      <td class="status-cell"><span class="tag off">Offline</span></td>
+      <td class="time-cell">${pretty(r.offAt)}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  scheduleDiv.innerHTML = html;
+}
+
+/* ====== Admin (password-protected) ====== */
+function openAdmin(){
+  modal.style.display='flex';
+  inputPwd.value='';
+  inputTime.value='';
+  btnPublish.disabled=true;
+  btnPause.disabled=true;
+  inputPwd.focus();
+}
+function closeAdmin(){ modal.style.display='none'; }
+function unlockIfPwdOk(){
+  if(inputPwd.value === ADMIN_PWD){
+    isAdmin=true;
+    btnPublish.disabled=false;
+    btnPause.disabled=false;
+    alert('Admin unlocked.');
+  }else{
+    isAdmin=false;
+    btnPublish.disabled=true;
+    btnPause.disabled=true;
+    alert('Wrong password.');
+  }
+}
+function applyRebase(){
+  if(!isAdmin) return alert('Admin locked.');
+  const v=inputTime.value.trim();
+  if(!v) return alert('Enter HH:MM');
+  const [hh,mm]=v.split(':').map(Number);
+  const d=new Date();
+  d.setHours(hh,mm,6,0);           // force :xx:06
+  if(d.getTime()>Date.now()) d.setDate(d.getDate()-1); // if in future, take yesterday
+  anchor_ms=d.getTime();
+  render(true);
+  alert('Timer rebased.');
+}
+function togglePause(){
+  if(!isAdmin) return alert('Admin locked.');
+  paused=!paused;
+  alert(paused?'Hangar paused.':'Hangar resumed.');
+}
+
+/* ====== Header/admin shortcuts ====== */
+secretLogo.addEventListener('dblclick', openAdmin);
+document.addEventListener('keydown', e=>{
+  if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='a') openAdmin();
+});
+btnLogin.addEventListener('click', unlockIfPwdOk);
+btnPublish.addEventListener('click', applyRebase);
+btnPause.addEventListener('click', togglePause);
+btnClose.addEventListener('click', closeAdmin);
+
+/* ====== Patch date (local tz) ====== */
+patchDate.textContent = 'Site updated: ' + new Date().toLocaleString();
+
+/* ====== Boot ====== */
+render(true);
+setInterval(()=>render(), 1000);
+</script>
+</body>
+</html>
