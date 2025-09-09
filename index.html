@@ -20,6 +20,7 @@
 
   header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
   .brand{display:flex;align-items:center;gap:8px}
+  .brand-logo{width:28px;height:28px;background:url('/assets/mammon.png') center/contain no-repeat;cursor:pointer}
   .brand h1{font-size:20px;font-weight:900;margin:0;color:var(--accent)}
   .badge{font-size:11px;font-weight:900;padding:4px 8px;border-radius:999px;
          background:#000;color:var(--accent);border:1px solid var(--accent)}
@@ -50,6 +51,15 @@
   .tag{padding:2px 8px;border-radius:999px;font-size:12px}
   .tag.on{background:rgba(34,197,94,.12);color:var(--ok);border:1px solid rgba(34,197,94,.45)}
   .tag.off{background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.45)}
+
+  /* Admin modal */
+  .modal{display:none;position:fixed;inset:0;z-index:20;align-items:center;justify-content:center;
+         background:rgba(0,0,0,.6)}
+  .modal .box{background:#111;border:1px solid var(--panel-border);border-radius:12px;
+              padding:16px;width:100%;max-width:320px}
+  .modal h3{margin:0 0 10px;font-size:18px}
+  .btn{padding:8px 12px;border-radius:8px;background:#000;color:var(--accent);
+       border:1px solid var(--accent);cursor:pointer}
 </style>
 </head>
 <body>
@@ -59,6 +69,7 @@
   <!-- Header -->
   <header>
     <div class="brand">
+      <div class="brand-logo" id="secretLogo" title="Double-click for admin"></div>
       <h1>MAMMON TIMER</h1>
       <span class="badge">LIVE</span>
     </div>
@@ -74,7 +85,7 @@
   <section class="panel">
     <h2>Executive Hangar Timer</h2>
     <div id="statusBig" class="big closed">OFFLINE</div>
-    <div class="until">Time until next change: <span id="until">--:--</span></div>
+    <div class="until">Time until next change: <span id="until">--:--:--</span></div>
     <div class="row" id="leds">
       <div class="led r"></div><div class="led r"></div><div class="led r"></div><div class="led r"></div><div class="led r"></div>
     </div>
@@ -87,29 +98,53 @@
 
 </div>
 
+<!-- Admin modal -->
+<div class="modal" id="modal">
+  <div class="box">
+    <h3>Admin Access</h3>
+    <input type="password" id="pwd" placeholder="Password" style="width:100%;margin-bottom:10px;padding:8px;border-radius:8px;background:#0a0a0a;color:#fff;border:1px solid #333">
+    <button class="btn" id="doLogin">OK</button>
+    <button class="btn" id="closeModal">Close</button>
+  </div>
+</div>
+
 <script>
 const OPEN_SEC=65*60,CLOSED_SEC=2*3600+1,CYCLE_SEC=OPEN_SEC+CLOSED_SEC,CYCLE_MS=CYCLE_SEC*1000,DOTS=5;
 const ANCHOR=new Date();ANCHOR.setHours(20,14,6,0);const anchor_ms=ANCHOR.getTime();
-const elClock=document.getElementById('clock'),elUntil=document.getElementById('until'),
-elStatus=document.getElementById('status'),elStatusBig=document.getElementById('statusBig'),
-elSub=document.getElementById('subtitle'),elNext=document.getElementById('nextTimes'),
-leds=document.getElementById('leds').children,scheduleDiv=document.getElementById('schedule');
+
+const elClock=document.getElementById('clock'),
+elUntil=document.getElementById('until'),
+elStatus=document.getElementById('status'),
+elStatusBig=document.getElementById('statusBig'),
+elSub=document.getElementById('subtitle'),
+elNext=document.getElementById('nextTimes'),
+leds=document.getElementById('leds').children,
+scheduleDiv=document.getElementById('schedule');
+
+const secretLogo=document.getElementById('secretLogo'),
+modal=document.getElementById('modal'),
+pwdInput=document.getElementById('pwd'),
+doLogin=document.getElementById('doLogin'),
+closeModal=document.getElementById('closeModal');
+
 const pad=n=>String(n).padStart(2,'0'),
 fmtHMS=s=>`${pad((s/3600)|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`,
 fmtMMSS=s=>`${Math.floor(s/60)}:${pad(s%60)}`,
 pretty=ms=>new Date(ms).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'});
+
 function greensClosed(r){const seg=CLOSED_SEC/DOTS;return Math.max(0,Math.min(DOTS,DOTS-Math.ceil(r/seg))); }
 function greensOpen(r){if(r<=300)return 0;const eff=Math.min(3600,r-300);return Math.min(DOTS,Math.ceil(eff/720)); }
 function nextAfter(start,step,now){return now<start?start:start+(Math.floor((now-start)/step)+1)*step;}
+
 let lastMin=-1;
 function render(force=false){
   const now=Date.now(),elapsed=((now-anchor_ms)/1000%CYCLE_SEC+CYCLE_SEC)%CYCLE_SEC,isOpen=elapsed<OPEN_SEC;
   const phaseSec=isOpen?OPEN_SEC:CLOSED_SEC,phaseElapsed=isOpen?elapsed:(elapsed-OPEN_SEC),remain=phaseSec-phaseElapsed;
 
   // Timers
-  elUntil.textContent=fmtMMSS(remain);     // mm:ss
-  elClock.textContent=fmtHMS(remain);      // hh:mm:ss
-  elSub.textContent='Next transition ('+(isOpen?'close':'open')+') in '+fmtMMSS(remain);
+  elUntil.textContent=fmtHMS(remain);   // HH:MM:SS
+  elClock.textContent=fmtHMS(remain);  // HH:MM:SS
+  elSub.textContent='Next transition ('+(isOpen?'close':'open')+') in '+fmtMMSS(remain); // MM:SS only
 
   // Status
   elStatus.textContent='Hangar '+(isOpen?'Open':'Closed');
@@ -122,17 +157,22 @@ function render(force=false){
   for(let i=0;i<DOTS;i++)leds[i].className='led '+(i<g?'g':'r');
 
   // Next events
-  const nextOpen=nextAfter(anchor_ms,CYCLE_MS,now),nextClose=nextAfter(anchor_ms+OPEN_SEC*1000,CYCLE_MS,now);
+  const nextOpen=nextAfter(anchor_ms,CYCLE_MS,now),
+        nextClose=nextAfter(anchor_ms+OPEN_SEC*1000,CYCLE_MS,now);
   elNext.textContent=`Next Close: ${pretty(nextClose)} • Next Open: ${pretty(nextOpen)}`;
 
   // Update schedule once per minute
   const m=new Date(now).getMinutes();
   if(force||m!==lastMin){lastMin=m;updateSchedule(now);}
 }
+
 function updateSchedule(nowMs){
-  const rows=[],horizon=nowMs+24*3600*1000;let n=Math.floor((nowMs-anchor_ms)/CYCLE_MS),open=anchor_ms+n*CYCLE_MS;
-  if(open>nowMs){n--;open-=CYCLE_MS;}while(open<horizon){
-    const cyc=49+Math.round((open-anchor_ms)/CYCLE_MS),close=open+OPEN_SEC*1000;
+  const rows=[],horizon=nowMs+24*3600*1000;
+  let n=Math.floor((nowMs-anchor_ms)/CYCLE_MS),open=anchor_ms+n*CYCLE_MS;
+  if(open>nowMs){n--;open-=CYCLE_MS;}
+  while(open<horizon){
+    const cyc=49+Math.round((open-anchor_ms)/CYCLE_MS),
+          close=open+OPEN_SEC*1000;
     if(open>=nowMs)rows.push({cyc,type:'on',at:open});
     if(close>=nowMs)rows.push({cyc,type:'off',at:close});
     open+=CYCLE_MS;
@@ -144,6 +184,14 @@ function updateSchedule(nowMs){
   }
   html+='</tbody></table>';scheduleDiv.innerHTML=html;
 }
+
+// Admin modal
+secretLogo.ondblclick=()=>{modal.style.display='flex';pwdInput.value='';pwdInput.focus();};
+document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='a'){modal.style.display='flex';pwdInput.value='';pwdInput.focus();}});
+doLogin.onclick=()=>{alert("Admin mode activated (demo)");modal.style.display='none';};
+closeModal.onclick=()=>{modal.style.display='none';};
+
+// Start
 render(true);setInterval(render,1000);
 </script>
 </body>
