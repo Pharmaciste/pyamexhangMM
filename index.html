@@ -11,7 +11,7 @@
   *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,sans-serif}
   .wm{position:fixed;inset:0;background:url('/assets/mammon.png') center 40%/min(90vmin,1200px) no-repeat;opacity:.25;pointer-events:none}
   .wrap{max-width:960px;margin:0 auto;padding:20px;position:relative;z-index:1}
-  h1{font-size:28px;margin:0 0 10px;font-weight:900}
+  h1{font-size:28px;margin:0 0 10px;font-weight:900;cursor:pointer}
   .big{font:40px/1.2 monospace;margin:6px 0}
   .big.open{color:var(--ok)}.big.closed{color:var(--danger)}
   .until{font:14px monospace;opacity:.95;margin:6px 0}
@@ -48,7 +48,7 @@
 <body>
 <div class="wm"></div>
 <div class="wrap">
-  <h1>MAMMON TIMER</h1>
+  <h1 id="secretLogo">MAMMON TIMER</h1>
   <div id="statusBig" class="big closed">OFFLINE</div>
   <div class="until">Time until next change: <span id="until">--:--</span></div>
   <div class="row" id="leds">
@@ -103,7 +103,7 @@
 const OPEN_SEC=65*60,CLOSED_SEC=2*3600+1,CYCLE_SEC=OPEN_SEC+CLOSED_SEC,CYCLE_MS=CYCLE_SEC*1000,DOTS=5;
 const ANCHOR=new Date();ANCHOR.setHours(20,14,6,0);const anchor_ms=ANCHOR.getTime();
 const elClock=clock,elUntil=until,elStatus=status,elStatusBig=statusBig,elSub=subtitle,elNext=nextTimes,leds=document.getElementById('leds').children,scheduleDiv=schedule;
-const adminPanel=adminPanel,secretLogo=document.querySelector('h1'),modal=modal,pwdInput=pwd,doLoginBtn=doLogin,closeModal=closeModal,inputTime=openTime,btnPublish=publish,btnPause=togglePause,btnLogout=logout;
+const adminPanel=adminPanel,secretLogo=secretLogo,modal=modal,pwdInput=pwd,doLoginBtn=doLogin,closeModal=closeModal,inputTime=openTime,btnPublish=publish,btnPause=togglePause,btnLogout=logout;
 const ppBtn=ppBtn,ppSection=privacy,tHead=tHead,tHeadImg=tHeadImg,tKilledMsg=tKilledMsg,tSong=tSong;
 let cfg={paused:false};const pad=n=>String(n).padStart(2,'0'),fmtHMS=s=>`${pad(s/3600|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`,fmtMMSS=s=>`${Math.floor(s/60)}:${pad(s%60)}`,pretty=ms=>new Date(ms).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'medium'});
 function greensClosed(r){const seg=CLOSED_SEC/DOTS;return Math.max(0,Math.min(DOTS,DOTS-Math.ceil(r/seg)));}
