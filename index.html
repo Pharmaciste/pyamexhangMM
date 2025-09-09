@@ -14,14 +14,15 @@
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);
        font:16px/1.55 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-  /* Mammon watermark — léger */
+
+  /* Mammon watermark — slightly visible */
   .wm{position:fixed;inset:0;background:url('/assets/mammon.png') center 50%/min(86vmin,1100px) no-repeat;
       opacity:.10;pointer-events:none;filter:drop-shadow(0 0 20px rgba(0,0,0,.55))}
   .wrap{max-width:980px;margin:0 auto;padding:20px;position:relative;z-index:1}
 
   header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
   .brand{display:flex;align-items:center;gap:10px}
-  .brand-logo{width:28px;height:28px;background:url('/assets/mammon.png') center/contain no-repeat;cursor:pointer}
+  .brand-logo{width:28px;height:28px;background:url('/assets/mammon.png') center/contain no-repeat}
   .brand h1{font-size:20px;font-weight:900;margin:0;color:var(--accent)}
   .badge{font-size:11px;font-weight:900;padding:4px 8px;border-radius:999px;
          background:#000;color:var(--accent);border:1px solid var(--accent)}
@@ -56,19 +57,6 @@
   .tag{padding:2px 8px;border-radius:999px;font-size:12px}
   .tag.on{background:rgba(34,197,94,.12);color:var(--ok);border:1px solid rgba(34,197,94,.45)}
   .tag.off{background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.45)}
-
-  /* Admin dock (en bas de page, affiché après mot de passe OK) */
-  .admin-dock{display:none;margin:20px 0 6px}
-  .admin-panel{background:#0f0f0f;border:1px solid var(--panel-border);border-radius:12px;padding:14px}
-  .admin-title{margin:0 0 8px;font-weight:800}
-  .row-flex{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-  .admin-panel input[type="password"],
-  .admin-panel input[type="time"]{padding:8px 10px;border-radius:8px;border:1px solid #333;background:#0a0a0a;color:#fff}
-  .btn{padding:8px 12px;border-radius:8px;background:#000;color:var(--accent);
-       border:1px solid var(--accent);cursor:pointer}
-  .btn[disabled]{opacity:.5;cursor:not-allowed}
-  .btn.danger{color:#fff;border-color:#ef4444;background:#ef4444}
-  .hint{font-size:12px;opacity:.75;margin-top:6px}
 </style>
 </head>
 <body>
@@ -78,7 +66,7 @@
   <!-- Header -->
   <header>
     <div class="brand">
-      <div class="brand-logo" id="secretLogo" title="Click to open admin at bottom"></div>
+      <div class="brand-logo" aria-hidden="true"></div>
       <h1>MAMMON TIMER</h1>
       <span class="badge">LIVE</span>
     </div>
@@ -115,58 +103,22 @@
       <div id="schedule"></div>
     </div>
   </section>
-
-  <!-- Admin dock (bottom) -->
-  <section class="admin-dock" id="adminDock">
-    <div class="admin-panel">
-      <h3 class="admin-title">Admin</h3>
-
-      <!-- Bloc mot de passe -->
-      <div class="row-flex" id="adminLock">
-        <label for="adminPwd"><strong>Password</strong></label>
-        <input type="password" id="adminPwd" placeholder="Enter admin password">
-        <button class="btn" id="btnUnlock">Unlock</button>
-      </div>
-
-      <!-- Bloc commandes (visible uniquement après déverrouillage) -->
-      <div id="adminControls" style="display:none">
-        <div class="row-flex" style="margin-top:10px">
-          <label for="openTime"><strong>Set last open (HH:MM)</strong> (seconds forced to :06)</label>
-          <input type="time" id="openTime" step="60">
-          <button class="btn" id="btnApply">Apply</button>
-          <button class="btn" id="btnPause">Pause/Resume Hangar</button>
-        </div>
-        <div class="hint">This will rebase the timer and rebuild the 24h schedule from the provided open time.</div>
-      </div>
-
-      <div class="hint">Shortcut: Ctrl+Shift+A • Click the Mammon icon to toggle this panel.</div>
-      <div class="row-flex" style="margin-top:10px">
-        <button class="btn danger" id="btnCloseDock">Close panel</button>
-      </div>
-    </div>
-  </section>
 </div>
 
 <script>
-/* ====== Config & constants ====== */
+/* ====== Config ====== */
 const OPEN_SEC  = 65*60;              // 65:00
 const CLOSED_SEC= 2*3600 + 1;         // 2:00:01
 const CYCLE_SEC = OPEN_SEC + CLOSED_SEC;
 const CYCLE_MS  = CYCLE_SEC*1000;
 const DOTS = 5;
-const ADMIN_PWD = 'jhhvuxju12';       // 🔐 password fourni
 
-/* ====== Anchor (today 20:14:06 local) ====== */
+/* Anchor: today 20:14:06 (local) */
 const ANCHOR = new Date();
 ANCHOR.setHours(20,14,6,0);
 let anchor_ms = ANCHOR.getTime();
 
-/* ====== State ====== */
-let paused = false;
-let isAdmin = false;
-let dockVisible = false;
-
-/* ====== DOM ====== */
+/* DOM */
 const elClock   = document.getElementById('clock');
 const elUntil   = document.getElementById('until');
 const elStatus  = document.getElementById('status');
@@ -177,28 +129,17 @@ const leds      = document.getElementById('leds').children;
 const scheduleDiv = document.getElementById('schedule');
 const patchDate = document.getElementById('patchDate');
 
-const secretLogo = document.getElementById('secretLogo');
-const adminDock  = document.getElementById('adminDock');
-const adminLock  = document.getElementById('adminLock');
-const adminControls = document.getElementById('adminControls');
-const inputPwd   = document.getElementById('adminPwd');
-const inputTime  = document.getElementById('openTime');
-const btnUnlock  = document.getElementById('btnUnlock');
-const btnApply   = document.getElementById('btnApply');
-const btnPause   = document.getElementById('btnPause');
-const btnCloseDock = document.getElementById('btnCloseDock');
-
-/* ====== Utils ====== */
+/* Utils */
 const pad=n=>String(n).padStart(2,'0');
 const fmtHMS=s=>{ s=Math.floor(s); return `${pad((s/3600)|0)}:${pad(((s%3600)/60)|0)}:${pad(s%60)}`; };
 const fmtMMSS=s=>{ s=Math.floor(s); return `${pad((s/60)|0)}:${pad(s%60)}`; };
 const pretty=ms=>new Date(ms).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'medium'});
 
-/* LEDs: number of green bulbs left (others are red) */
+/* LEDs: green count left (others red) */
 function ledCount(remain,isOpen){
   if(isOpen){
     if(remain<=300) return 0;              // last 5 min -> all red
-    const eff=Math.min(3600,remain-300);   // 60 min progress window
+    const eff=Math.min(3600,remain-300);   // 60 min window
     return Math.min(DOTS, Math.ceil(eff/(60*12))); // ~12 min per LED
   }else{
     const seg=CLOSED_SEC/DOTS;             // ~24 min per LED
@@ -207,11 +148,9 @@ function ledCount(remain,isOpen){
 }
 function nextAfter(start,step,now){ return now<start ? start : start + (Math.floor((now-start)/step)+1)*step; }
 
-/* ====== Rendering ====== */
+/* Render */
 let lastMinute=-1;
 function render(force=false){
-  if(paused) return;
-
   const now = Date.now();
   const elapsed = (((now - anchor_ms)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
   const isOpen = elapsed < OPEN_SEC;
@@ -221,17 +160,17 @@ function render(force=false){
   const remain = phaseSec - phaseElapsed;
 
   // Timers
-  elUntil.textContent = fmtHMS(remain);       // HH:MM:SS
-  elClock.textContent = fmtHMS(remain);       // HH:MM:SS
-  elSub.textContent = 'Next transition ('+(isOpen?'close':'open')+') in ' + fmtMMSS(remain); // MM:SS
+  elUntil.textContent = fmtHMS(remain);
+  elClock.textContent = fmtHMS(remain);
+  elSub.textContent = 'Next transition ('+(isOpen?'close':'open')+') in ' + fmtMMSS(remain);
 
-  // Status colors
+  // Status
   elStatus.textContent = 'Hangar ' + (isOpen ? 'Open' : 'Closed');
   elStatus.className = 'status ' + (isOpen ? 'open' : 'closed');
   elStatusBig.textContent = isOpen ? 'ONLINE' : 'OFFLINE';
   elStatusBig.className = 'big ' + (isOpen ? 'open' : 'closed');
 
-  // LEDs (greens first; remaining turn red)
+  // LEDs
   const g=ledCount(remain,isOpen);
   for(let i=0;i<DOTS;i++) leds[i].className='led '+(i<g?'g':'r');
 
@@ -245,12 +184,11 @@ function render(force=false){
   if(force || m!==lastMinute){ lastMinute=m; updateSchedule(now); }
 }
 
-/* ====== Schedule: two rows per cycle (Online / Offline) ====== */
+/* Schedule: two rows per cycle (Online / Offline) */
 function updateSchedule(nowMs){
   const rows=[];
   const horizon=nowMs+24*3600*1000;
 
-  // last open <= now
   let n=Math.floor((nowMs - anchor_ms)/CYCLE_MS);
   let openStart=anchor_ms + n*CYCLE_MS;
   if(openStart>nowMs){ n--; openStart-=CYCLE_MS; }
@@ -282,52 +220,10 @@ function updateSchedule(nowMs){
   scheduleDiv.innerHTML = html;
 }
 
-/* ====== Admin dock (bottom) ====== */
-function toggleDock(show){
-  dockVisible = (show===undefined) ? !dockVisible : show;
-  adminDock.style.display = dockVisible ? 'block' : 'none';
-  if(dockVisible) adminDock.scrollIntoView({behavior:'smooth',block:'end'});
-}
-function unlockAdmin(){
-  const ok = inputPwd.value === ADMIN_PWD;
-  if(ok){
-    isAdmin = true;
-    adminLock.style.display='none';
-    adminControls.style.display='block';
-    inputTime.focus();
-  }else{
-    isAdmin = false;
-    alert('Wrong password.');
-  }
-}
-function applyRebase(){
-  if(!isAdmin) return alert('Admin locked.');
-  const v = (inputTime.value||'').trim();
-  if(!v) return alert('Enter HH:MM');
-  const [hh,mm]=v.split(':').map(Number);
-  const d=new Date(); d.setHours(hh,mm,6,0);   // force :xx:06
-  if(d.getTime()>Date.now()) d.setDate(d.getDate()-1); // if future, previous day
-  anchor_ms = d.getTime();
-  render(true);
-}
-function togglePause(){
-  if(!isAdmin) return alert('Admin locked.');
-  paused = !paused;
-  alert(paused ? 'Hangar paused.' : 'Hangar resumed.');
-}
-
-/* ====== Header/admin interactions ====== */
-secretLogo.addEventListener('click',()=>toggleDock(true));
-document.addEventListener('keydown',e=>{ if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='a') toggleDock(true); });
-btnUnlock.addEventListener('click', unlockAdmin);
-btnApply.addEventListener('click', applyRebase);
-btnPause.addEventListener('click', togglePause);
-btnCloseDock.addEventListener('click', ()=>toggleDock(false));
-
-/* ====== Patch date in local tz ====== */
+/* Patch date (local) */
 patchDate.textContent = 'Site updated: ' + new Date().toLocaleString();
 
-/* ====== Start ====== */
+/* Boot */
 render(true);
 setInterval(()=>render(),1000);
 </script>
