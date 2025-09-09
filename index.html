@@ -14,10 +14,10 @@
   *{box-sizing:border-box} html,body{margin:0;padding:0}
   body{font:16px/1.55 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--text); background:var(--bg); min-height:100vh;}
 
-  /* Gros watermark Mammon bien visible */
+  /* Gros watermark Mammon visible */
   .wm{position:fixed; inset:0; pointer-events:none; z-index:0;
       background:url('/assets/mammon.png') center 40%/min(90vmin,1200px) no-repeat;
-      opacity:.25; filter: drop-shadow(0 0 22px rgba(0,0,0,.65))}
+      opacity:.26; filter: drop-shadow(0 0 22px rgba(0,0,0,.65))}
   .overlay{position:relative; z-index:1;
       background:
         radial-gradient(90vw 60vh at 70% -20%, rgba(253,224,71,.10), transparent 60%),
@@ -51,7 +51,7 @@
   .meta{margin-top:10px; font-size:12px; opacity:.9}
   .next{margin-top:8px; font-size:13px; opacity:.96}
 
-  /* Planning 24 h façon tableau de référence */
+  /* Planning 24 h (même structure que la capture) */
   .sched{margin-top:12px}
   .sched table{width:100%; border-collapse:collapse; font-size:14px}
   .sched th,.sched td{padding:8px 10px; border-top:1px solid rgba(255,255,255,.08)}
@@ -77,7 +77,7 @@
   .num{width:84px;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff}
   .admin input[type="time"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
 
-  /* Tête cliquable */
+  /* Tête cliquable (reset à chaque refresh) */
   .t-head{position:fixed; right:14px; bottom:14px; z-index:5; display:flex; align-items:center; gap:10px; background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12); padding:8px 10px; border-radius:14px; backdrop-filter: blur(6px)}
   .t-head img{width:56px; height:56px; border-radius:999px; object-fit:cover; border:1px solid rgba(255,255,255,.2); cursor:pointer}
   .t-head .note{font-size:12px; opacity:.9}
@@ -199,12 +199,12 @@
 </div>
 
 <script>
-  /* ===== Cycle exact ===== */
-  const OPEN_SEC   = 65*60;          // 65:00
-  const CLOSED_SEC = 2*3600 + 1;     // 2:00:01
-  const CYCLE_SEC  = OPEN_SEC + CLOSED_SEC; // 03:05:01
+  /* ===== Cycle exact : Online 65:00 / Offline 2:00:01 ===== */
+  const OPEN_SEC   = 65*60;          // 3900
+  const CLOSED_SEC = 2*3600 + 1;     // 7201
+  const CYCLE_SEC  = OPEN_SEC + CLOSED_SEC; // 11101
   const DOTS=5;
-  const ANCHOR_CYCLE = 49;           // Cycle #49 = 09/09/2025 20:14:06
+  const ANCHOR_CYCLE = 49;           // #49 = aujourd’hui 20:14:06
 
   /* ===== Elements ===== */
   const elClock=document.getElementById('clock');
@@ -257,7 +257,7 @@
   const anchorMs=()=>Date.parse(cfg.anchor_iso)+(cfg.manual_offset_seconds||0)*1000;
   const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
 
-  /* ===== Ancre = AUJOURD’HUI 20:14:06 locale ===== */
+  /* ===== Ancre : AUJOURD’HUI 20:14:06 locale ===== */
   function setAnchorToday201406(){
     const now=new Date();
     const today=new Date(now); today.setHours(20,14,6,0);
@@ -269,13 +269,13 @@
 
   /* ===== LEDs ===== */
   function greenCountClosed(remainSec){
-    const seg = CLOSED_SEC / DOTS;                 // ≈24 min/LED
-    let cnt = DOTS - Math.ceil(remainSec / seg);   // 0..5 verts en approchant
+    const seg = CLOSED_SEC / DOTS;                 // ~24 min/LED
+    let cnt = DOTS - Math.ceil(remainSec / seg);   // 0→5 verts en approchant de l’ouverture
     return Math.max(0, Math.min(DOTS, cnt));
   }
   function greenCountOpen(remainSec){
-    if (remainSec <= 5*60) return 0;               // 5 dernières min : “black”
-    const eff = Math.min(60*60, remainSec - 5*60); // 60 min actives
+    if (remainSec <= 5*60) return 0;               // 5 dernières minutes “black”
+    const eff = Math.min(60*60, remainSec - 5*60); // 60 min de LEDs actives
     return Math.max(0, Math.min(DOTS, Math.ceil(eff / (12*60))));
   }
 
@@ -283,14 +283,9 @@
   let lastMinute=-1;
   function render(force=false){
     if(!cfg.anchor_iso){
-      elClock.textContent='--:--:--';
-      elUntil.textContent='--:--';
-      elStatus.className='status closed';
-      elStatus.textContent='Initialisation…';
-      elSub.textContent='Aucune ancre définie';
-      elNext.textContent='—';
-      scheduleDiv.innerHTML='';
-      return;
+      elClock.textContent='--:--:--'; elUntil.textContent='--:--';
+      elStatus.className='status closed'; elStatus.textContent='Initialisation…';
+      elSub.textContent='Aucune ancre définie'; elNext.textContent='—'; scheduleDiv.innerHTML=''; return;
     }
     const now=Date.now();
     const elapsed=(((now-anchorMs())/1000)%CYCLE_SEC+CYCLE_SEC)%CYCLE_SEC;
@@ -322,15 +317,16 @@
     const a = anchorMs();
     const cycleMs = CYCLE_SEC*1000;
 
-    // n0 = index de la dernière ouverture <= now
-    let n0 = Math.floor((nowMs - a)/cycleMs);
-    let openStart = a + n0*cycleMs;
-    if (openStart > nowMs){ n0--; openStart -= cycleMs; }
+    // Dernière ouverture passée
+    let n = Math.floor((nowMs - a)/cycleMs);
+    let openStart = a + n*cycleMs;
+    if (openStart > nowMs){ n--; openStart -= cycleMs; }
 
     while (openStart < horizon){
-      const cycleNum = ANCHOR_CYCLE + ( (openStart - a) / cycleMs );
+      const step = Math.round((openStart - a)/cycleMs); // entier sûr
+      const cycleNum = ANCHOR_CYCLE + step;
       const closeTime = openStart + OPEN_SEC*1000;
-      if (openStart >= nowMs) rows.push({cycle:cycleNum, type:'on', at: openStart});
+      if (openStart >= nowMs) rows.push({cycle:cycleNum, type:'on',  at: openStart});
       if (closeTime >= nowMs) rows.push({cycle:cycleNum, type:'off', at: closeTime});
       openStart += cycleMs;
     }
@@ -339,12 +335,12 @@
 
     let html = '<table><thead><tr><th>Cycle</th><th>Status</th><th>Local Time</th></tr></thead><tbody>';
 
-    // Ligne “en cours” si ouvert
-    const curCycleNum = ANCHOR_CYCLE + Math.floor(( (Math.floor((nowMs - a)/cycleMs))*cycleMs )/cycleMs);
+    // Ligne “en cours” si ouvert (facultative)
     const curOpenStart = a + Math.floor((nowMs - a)/cycleMs)*cycleMs;
+    const curCycle = ANCHOR_CYCLE + Math.round((curOpenStart - a)/cycleMs);
     const curClose = curOpenStart + OPEN_SEC*1000;
     if (curOpenStart <= nowMs && nowMs < curClose){
-      html += `<tr><td>${curCycleNum}</td><td><span class="tag on">Online (en cours)</span></td><td>Fermeture à ${pretty(curClose)}</td></tr>`;
+      html += `<tr><td>${curCycle}</td><td><span class="tag on">Online (en cours)</span></td><td>Fermeture à ${pretty(curClose)}</td></tr>`;
     }
 
     for(const r of rows){
@@ -359,18 +355,14 @@
     scheduleDiv.innerHTML = html;
   }
 
-  /* ===== Init (on force l’ancre de ce soir) ===== */
-  function loadCfg(){
-    setAnchorToday201406();   // prochaine ouverture AUJOURD’HUI 20:14:06
-    render(true);
-  }
+  /* ===== Init : ancre sur AUJOURD’HUI 20:14:06 (cycle 49) ===== */
+  function loadCfg(){ setAnchorToday201406(); render(true); }
 
   /* ===== Admin caché ===== */
   function setAdminUI(v){ isAdmin=v; adminPanel.style.display=v?'flex':'none'; if(!v) adminPwd=null; }
   secretLogo.addEventListener('dblclick', ()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); });
   document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='a'){ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } });
   if (location.hash === '#admin'){ setTimeout(()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }, 60); }
-
   doLoginBtn.onclick= ()=>{ adminPwd=pwdInput.value.trim(); if(!adminPwd){ alert('Entre le mot de passe'); return; } setAdminUI(true); modal.style.display='none'; };
   closeModal.onclick=()=>{ modal.style.display='none'; };
   btnLogout.onclick=()=> setAdminUI(false);
@@ -386,7 +378,6 @@
     if(typeof pausedFlag==='boolean') cfg.paused=pausedFlag;
     render(true);
   }
-
   btnPublish.onclick= ()=>{ const v=inputTime.value.trim(); if(!v) return alert('Indique HH:MM'); applyAnchor(toISOFromHHMM(v)); };
   btnPause.onclick   = ()=>{ applyAnchor(cfg.anchor_iso, !cfg.paused); };
   btnReload.onclick  = loadCfg;
@@ -418,7 +409,7 @@
   }
   tHeadImg.addEventListener('click', async ()=>{
     try{ await tSong.play(); }catch{}
-    setTKilledUI(true);
+    setTKilledUI(true);  // pas de localStorage → re-cliquable à chaque refresh
   });
   setTKilledUI(false);
 
