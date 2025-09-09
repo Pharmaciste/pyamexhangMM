@@ -13,6 +13,7 @@
   }
   *{box-sizing:border-box} html,body{margin:0;padding:0}
   body{font:16px/1.55 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--text); background:var(--bg); min-height:100vh;}
+
   /* Gros watermark Mammon bien visible */
   .wm{position:fixed; inset:0; pointer-events:none; z-index:0;
       background:url('/assets/mammon.png') center 40%/min(90vmin,1200px) no-repeat;
@@ -39,14 +40,18 @@
   .status{margin:8px 0 2px; font-weight:900; letter-spacing:.3px}
   .status.open{color:var(--ok)} .status.closed{color:var(--danger)}
   .sub{opacity:.95}
-  .row{display:flex; gap:10px; justify-content:center; margin:12px 0 8px}
+
+  /* Time until next change */
+  .until{font:14px/1.2 ui-monospace,monospace; margin:2px 0 8px; opacity:.95}
+
+  .row{display:flex; gap:10px; justify-content:center; margin:8px 0 8px}
   .led{width:22px; height:22px; border-radius:7px; border:1px solid rgba(0,0,0,.6); background:#0b1323; box-shadow: inset 0 0 12px rgba(0,0,0,.6), 0 0 12px rgba(0,0,0,.25)}
   .led.g{ background:var(--ok); box-shadow: inset 0 0 10px rgba(0,0,0,.45), 0 0 16px rgba(34,197,94,.45) }
   .led.r{ background:var(--danger); box-shadow: inset 0 0 10px rgba(0,0,0,.45), 0 0 14px rgba(239,68,68,.35) }
   .meta{margin-top:10px; font-size:12px; opacity:.9}
-  .next{margin-top:12px; font-size:13px; opacity:.96}
+  .next{margin-top:8px; font-size:13px; opacity:.96}
 
-  /* Planning 24 h */
+  /* Planning 24 h façon tableau de référence */
   .sched{margin-top:12px}
   .sched table{width:100%; border-collapse:collapse; font-size:14px}
   .sched th,.sched td{padding:8px 10px; border-top:1px solid rgba(255,255,255,.08)}
@@ -72,7 +77,7 @@
   .num{width:84px;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff}
   .admin input[type="time"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
 
-  /* Tête cliquable (reset à chaque refresh) */
+  /* Tête cliquable */
   .t-head{position:fixed; right:14px; bottom:14px; z-index:5; display:flex; align-items:center; gap:10px; background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12); padding:8px 10px; border-radius:14px; backdrop-filter: blur(6px)}
   .t-head img{width:56px; height:56px; border-radius:999px; object-fit:cover; border:1px solid rgba(255,255,255,.2); cursor:pointer}
   .t-head .note{font-size:12px; opacity:.9}
@@ -101,15 +106,15 @@
     <!-- Panel Timer -->
     <section class="panel">
       <h1>Executive Hangar Timer</h1>
-      <div class="clock" id="clock">--:--:--</div>
 
+      <div class="until">Time until next change: <span id="until">--:--</span></div>
       <div class="row" id="leds">
         <div class="led r"></div><div class="led r"></div><div class="led r"></div><div class="led r"></div><div class="led r"></div>
       </div>
 
+      <div class="clock" id="clock">--:--:--</div>
       <div class="status closed" id="status">Hangar Closed</div>
       <div class="sub" id="subtitle">Prochaine transition dans --:--:--</div>
-
       <div class="next" id="nextTimes">Prochaine fermeture : — • Prochaine ouverture : —</div>
       <div class="meta" id="modeMeta">Chargement…</div>
 
@@ -151,27 +156,20 @@
       <div class="box">
         <h2>Privacy Policy</h2>
         <p><em>Effective Date: September 8, 2025</em></p>
-
         <h3>Information We Collect</h3>
         <p>We do <strong>not</strong> collect, sell, or share personal data. Timer preferences are saved in your browser’s <strong>Local Storage</strong> for convenience. This data stays on your device and is never transmitted to our servers.</p>
-
         <h3>Cookies &amp; Tracking</h3>
         <p>We currently do not use cookies. In the future, we may enable cookies or similar technologies to show ads (e.g., Google AdSense, Ezoic). These may process non-identifiable data (e.g., page views) to serve relevant ads. You can control or delete cookies in your browser settings at any time.</p>
-
         <h3>Third-Party Services (Ads)</h3>
         <p>If/when ads are enabled, third-party ad networks (e.g., Google AdSense, Ezoic) may use cookies and similar tech to deliver and measure ads. Please review their respective privacy policies for details on their processing.</p>
-
         <h3>Your Rights</h3>
         <p>Depending on your location, you may have rights under laws such as <strong>GDPR</strong> (EU/EEA/UK) or <strong>CCPA/CPRA</strong> (California), including access, correction, deletion, objection/restriction, and withdrawing consent (where applicable). Because we do not collect personal data, these rights mainly relate to cookie preferences you control in your browser if/when ads are enabled.</p>
-
         <h3>Data Retention</h3>
-        <p>We do not maintain user profiles or store personal data. Local Storage data remains on your device until you clear it (e.g., “Clear Site Data” in your browser).</p>
-
+        <p>We do not maintain user profiles or store personal data. Local Storage data remains on your device until you clear it.</p>
         <h3>Children’s Privacy</h3>
-        <p>This site is for a general audience and does not knowingly collect information from children under 13 (or higher local age threshold).</p>
-
+        <p>This site is for a general audience and does not knowingly collect information from children under 13.</p>
         <h3>Changes to This Policy</h3>
-        <p>We may update this Policy from time to time. We will post changes here with a new Effective Date. Please check this page periodically.</p>
+        <p>We may update this Policy from time to time. We will post changes here with a new Effective Date.</p>
       </div>
     </section>
 
@@ -201,14 +199,16 @@
 </div>
 
 <script>
-  /* ===== Cycle : ouvert 65:00 / fermé 2:00:01 ===== */
-  const OPEN_SEC   = 65*60;    // 3900
-  const CLOSED_SEC = 7201;     // 7201
-  const CYCLE_SEC  = OPEN_SEC + CLOSED_SEC; // 11101
+  /* ===== Cycle exact ===== */
+  const OPEN_SEC   = 65*60;          // 65:00
+  const CLOSED_SEC = 2*3600 + 1;     // 2:00:01
+  const CYCLE_SEC  = OPEN_SEC + CLOSED_SEC; // 03:05:01
   const DOTS=5;
+  const ANCHOR_CYCLE = 49;           // Cycle #49 = 09/09/2025 20:14:06
 
   /* ===== Elements ===== */
   const elClock=document.getElementById('clock');
+  const elUntil=document.getElementById('until');
   const elStatus=document.getElementById('status');
   const elSub=document.getElementById('subtitle');
   const leds=document.getElementById('leds').children;
@@ -244,14 +244,15 @@
   const tKilledMsg=document.getElementById('tKilledMsg');
   const tSong=document.getElementById('tSong');
 
-  /* ===== Etat local ===== */
+  /* ===== Etat ===== */
   let cfg={anchor_iso:null, manual_offset_seconds:0, paused:false};
   let isAdmin=false, adminPwd=null;
 
   /* ===== Utils ===== */
   const pad=n=>String(n).padStart(2,'0');
-  const fmt=s=>{s=Math.max(0,Math.floor(s)); return `${pad(s/3600|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`;};
-  const pretty=ms=>new Date(ms).toLocaleString('fr-FR',{dateStyle:'short', timeStyle:'short'});
+  const fmtHMS=s=>{s=Math.max(0,Math.floor(s)); return `${pad(s/3600|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`;};
+  const fmtMMSS=s=>{s=Math.max(0,Math.floor(s)); return `${Math.floor(s/60)}:${pad(s%60)}`;}; // ex: 97:33
+  const pretty=ms=>new Date(ms).toLocaleString('fr-FR',{dateStyle:'short', timeStyle:'medium'});
   const toISO=ms=>new Date(ms - new Date().getTimezoneOffset()*60000).toISOString().replace('.000Z','Z');
   const anchorMs=()=>Date.parse(cfg.anchor_iso)+(cfg.manual_offset_seconds||0)*1000;
   const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
@@ -262,19 +263,19 @@
     const today=new Date(now); today.setHours(20,14,6,0);
     cfg.anchor_iso = toISO(today.getTime());
     cfg.manual_offset_seconds = 0;
-    elMode.textContent='Ancre fixée sur AUJOURD’HUI 20:14:06 — cycle 65:00 / 2:00:01';
+    elMode.textContent='Ancre fixée : aujourd’hui 20:14:06 (cycle 49).';
     inputTime.value='20:14';
   }
 
   /* ===== LEDs ===== */
   function greenCountClosed(remainSec){
-    const seg = CLOSED_SEC / DOTS;                // ~24 min par LED
-    let cnt = DOTS - Math.ceil(remainSec / seg);  // 0→5 verts en approchant de l’ouverture
+    const seg = CLOSED_SEC / DOTS;                 // ≈24 min/LED
+    let cnt = DOTS - Math.ceil(remainSec / seg);   // 0..5 verts en approchant
     return Math.max(0, Math.min(DOTS, cnt));
   }
   function greenCountOpen(remainSec){
-    if (remainSec <= 5*60) return 0;              // 5 dernières minutes : “black”
-    const eff = Math.min(60*60, remainSec - 5*60);// 60 min de LEDs actives
+    if (remainSec <= 5*60) return 0;               // 5 dernières min : “black”
+    const eff = Math.min(60*60, remainSec - 5*60); // 60 min actives
     return Math.max(0, Math.min(DOTS, Math.ceil(eff / (12*60))));
   }
 
@@ -283,6 +284,7 @@
   function render(force=false){
     if(!cfg.anchor_iso){
       elClock.textContent='--:--:--';
+      elUntil.textContent='--:--';
       elStatus.className='status closed';
       elStatus.textContent='Initialisation…';
       elSub.textContent='Aucune ancre définie';
@@ -297,10 +299,11 @@
     const phaseElapsed = isOpen ? elapsed : (elapsed-OPEN_SEC);
     const remain = phaseSec - phaseElapsed;
 
-    elClock.textContent = fmt(remain);
+    elUntil.textContent = fmtMMSS(remain);
+    elClock.textContent = fmtHMS(remain);
     elStatus.className='status '+(isOpen?'open':'closed');
     elStatus.textContent = 'Hangar '+(isOpen?'Open':'Closed') + (cfg.paused?' (Paused)':'');
-    elSub.textContent = 'Prochaine transition ('+(isOpen?'fermeture':'ouverture')+') dans '+fmt(remain);
+    elSub.textContent = 'Prochaine transition ('+(isOpen?'fermeture':'ouverture')+') dans '+fmtHMS(remain);
 
     const green = isOpen ? greenCountOpen(remain) : greenCountClosed(remain);
     for(let i=0;i<DOTS;i++) leds[i].className='led '+(i<green?'g':'r');
@@ -317,41 +320,48 @@
     const rows=[];
     const horizon = nowMs + 24*3600*1000;
     const a = anchorMs();
-    // dernière ouverture passée
-    const k = Math.floor((nowMs - a)/(CYCLE_SEC*1000));
-    let openStart = a + k*CYCLE_SEC*1000;
-    if (openStart > nowMs) openStart -= CYCLE_SEC*1000;
+    const cycleMs = CYCLE_SEC*1000;
+
+    // n0 = index de la dernière ouverture <= now
+    let n0 = Math.floor((nowMs - a)/cycleMs);
+    let openStart = a + n0*cycleMs;
+    if (openStart > nowMs){ n0--; openStart -= cycleMs; }
 
     while (openStart < horizon){
-      const closeTime = openStart + OPEN_SEC*1000;           // ferme 65 min après ouverture
-      if (openStart >= nowMs) rows.push({type:'on', at: openStart});
-      if (closeTime >= nowMs) rows.push({type:'off', at: closeTime});
-      openStart += CYCLE_SEC*1000;                           // + 03:05:01
+      const cycleNum = ANCHOR_CYCLE + ( (openStart - a) / cycleMs );
+      const closeTime = openStart + OPEN_SEC*1000;
+      if (openStart >= nowMs) rows.push({cycle:cycleNum, type:'on', at: openStart});
+      if (closeTime >= nowMs) rows.push({cycle:cycleNum, type:'off', at: closeTime});
+      openStart += cycleMs;
     }
 
     rows.sort((a,b)=>a.at-b.at);
 
-    let html = '<table><thead><tr><th>Évènement</th><th>Heure locale</th></tr></thead><tbody>';
+    let html = '<table><thead><tr><th>Cycle</th><th>Status</th><th>Local Time</th></tr></thead><tbody>';
 
-    // ligne “en cours” si ouvert
-    const curOpenStart = a + Math.floor((nowMs - a)/(CYCLE_SEC*1000))*CYCLE_SEC*1000;
+    // Ligne “en cours” si ouvert
+    const curCycleNum = ANCHOR_CYCLE + Math.floor(( (Math.floor((nowMs - a)/cycleMs))*cycleMs )/cycleMs);
+    const curOpenStart = a + Math.floor((nowMs - a)/cycleMs)*cycleMs;
     const curClose = curOpenStart + OPEN_SEC*1000;
     if (curOpenStart <= nowMs && nowMs < curClose){
-      html += `<tr><td><span class="tag on">Online (en cours)</span></td><td>Fermeture à ${pretty(curClose)}</td></tr>`;
+      html += `<tr><td>${curCycleNum}</td><td><span class="tag on">Online (en cours)</span></td><td>Fermeture à ${pretty(curClose)}</td></tr>`;
     }
 
     for(const r of rows){
       if(r.at < nowMs) continue;
-      html += `<tr><td><span class="tag ${r.type==='on'?'on':'off'}">${r.type==='on'?'Online':'Offline'}</span></td><td>${pretty(r.at)}</td></tr>`;
+      html += `<tr>
+        <td>${r.cycle}</td>
+        <td><span class="tag ${r.type==='on'?'on':'off'}">${r.type==='on'?'Online':'Offline'}</span></td>
+        <td>${pretty(r.at)}</td>
+      </tr>`;
     }
     html += '</tbody></table>';
     scheduleDiv.innerHTML = html;
   }
 
-  /* ===== API (facultatif) ===== */
-  async function loadCfg(){
-    // On ignore un éventuel backend et on force l’ancre sur AUJOURD’HUI 20:14:06
-    setAnchorToday201406();
+  /* ===== Init (on force l’ancre de ce soir) ===== */
+  function loadCfg(){
+    setAnchorToday201406();   // prochaine ouverture AUJOURD’HUI 20:14:06
     render(true);
   }
 
@@ -359,37 +369,31 @@
   function setAdminUI(v){ isAdmin=v; adminPanel.style.display=v?'flex':'none'; if(!v) adminPwd=null; }
   secretLogo.addEventListener('dblclick', ()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); });
   document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='a'){ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } });
-  if (location.hash === '#admin'){ setTimeout(()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }, 50); }
+  if (location.hash === '#admin'){ setTimeout(()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }, 60); }
 
   doLoginBtn.onclick= ()=>{ adminPwd=pwdInput.value.trim(); if(!adminPwd){ alert('Entre le mot de passe'); return; } setAdminUI(true); modal.style.display='none'; };
   closeModal.onclick=()=>{ modal.style.display='none'; };
   btnLogout.onclick=()=> setAdminUI(false);
 
-  function isoFromHHMM(hhmm){
+  function toISOFromHHMM(hhmm){
     const [hh,mm]=hhmm.split(':').map(Number);
     const now=new Date(); const d=new Date(now);
     d.setHours(hh,mm,0,0); if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1);
     return toISO(d.getTime());
   }
-
-  function postAnchorOrLocal(iso, pausedFlag){
-    // Pas de backend requis : on applique localement
+  function applyAnchor(iso, pausedFlag){
     cfg.anchor_iso=iso;
     if(typeof pausedFlag==='boolean') cfg.paused=pausedFlag;
     render(true);
   }
 
-  btnPublish.onclick= ()=>{ const v=inputTime.value.trim(); if(!v) return alert('Indique HH:MM'); postAnchorOrLocal(isoFromHHMM(v)); };
-  btnPause.onclick   = ()=>{ postAnchorOrLocal(cfg.anchor_iso, !cfg.paused); };
+  btnPublish.onclick= ()=>{ const v=inputTime.value.trim(); if(!v) return alert('Indique HH:MM'); applyAnchor(toISOFromHHMM(v)); };
+  btnPause.onclick   = ()=>{ applyAnchor(cfg.anchor_iso, !cfg.paused); };
   btnReload.onclick  = loadCfg;
-
-  btnForceOpen.onclick  = ()=>{ postAnchorOrLocal(toISO(Date.now())); };
-  btnForceClosed.onclick= ()=>{ postAnchorOrLocal(toISO(Date.now() - OPEN_SEC*1000 - 1000)); };
-
-  btnSyncCloseIn.onclick= ()=>{ const x=parseInt(inputMinsToClose.value,10); if(Number.isNaN(x)||x<0||x>65) return alert('0–65');
-    const iso=toISO(Date.now() - (OPEN_SEC*1000 - x*60*1000)); postAnchorOrLocal(iso); };
-  btnSyncOpenIn.onclick = ()=>{ const x=parseInt(inputMinsToOpen.value,10); if(Number.isNaN(x)||x<0||x>120) return alert('0–120');
-    const iso=toISO(Date.now() - (CYCLE_SEC*1000 - x*60*1000)); postAnchorOrLocal(iso); };
+  btnForceOpen.onclick  = ()=> applyAnchor(toISO(Date.now()));
+  btnForceClosed.onclick= ()=> applyAnchor(toISO(Date.now() - OPEN_SEC*1000 - 1000));
+  btnSyncCloseIn.onclick= ()=>{ const x=parseInt(inputMinsToClose.value,10); if(Number.isNaN(x)||x<0||x>65) return alert('0–65'); applyAnchor(toISO(Date.now() - (OPEN_SEC*1000 - x*60*1000))); };
+  btnSyncOpenIn.onclick = ()=>{ const x=parseInt(inputMinsToOpen.value,10); if(Number.isNaN(x)||x<0||x>120) return alert('0–120'); applyAnchor(toISO(Date.now() - (CYCLE_SEC*1000 - x*60*1000))); };
 
   /* ===== Privacy toggle ===== */
   function setPrivacyVisibility(show){
@@ -415,7 +419,6 @@
   tHeadImg.addEventListener('click', async ()=>{
     try{ await tSong.play(); }catch{}
     setTKilledUI(true);
-    // pas de localStorage : re-cliquable à chaque actualisation
   });
   setTKilledUI(false);
 
