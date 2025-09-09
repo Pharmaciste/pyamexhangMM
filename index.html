@@ -52,18 +52,33 @@
   .meta{margin-top:10px; font-size:12px; opacity:.9}
   .next{margin-top:12px; font-size:13px; opacity:.96}
 
+  /* Planning 24h */
+  .sched{margin-top:12px}
+  .sched table{width:100%; border-collapse:collapse; font-size:14px}
+  .sched th,.sched td{padding:8px 10px; border-top:1px solid rgba(255,255,255,.08)}
+  .sched th{text-align:left; opacity:.9}
+  .tag{font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.15)}
+  .tag.on{color:var(--ok); border-color:rgba(34,197,94,.45); background:rgba(34,197,94,.12)}
+  .tag.off{color:var(--danger); border-color:rgba(239,68,68,.45); background:rgba(239,68,68,.12)}
+
+  /* bouton Privacy en bas */
   .pp-cta-wrap{margin:22px 0 8px; display:flex; justify-content:center}
   .pp-cta{padding:9px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:#0f172a; color:#fff; text-decoration:none}
   .pp-cta:hover{border-color:#334155}
 
+  /* Privacy */
   .privacy{display:none; margin-top:16px}
   .privacy .box{background:var(--panel); border:1px solid var(--panel-border); border-radius:16px; padding:16px; box-shadow:0 12px 30px var(--shadow)}
   .privacy h2{margin:0 0 10px; font-size:20px; font-weight:900}
   .privacy h3{margin:16px 0 6px; font-size:16px; font-weight:800}
   .privacy p, .privacy li{color:#dbeafe}
 
+  /* Admin buttons look */
   .btn{padding:9px 12px; border-radius:12px; border:1px solid var(--panel-border); background:#0f172a; color:#fff; cursor:pointer}
   .btn.primary{background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#111; border-color:transparent; font-weight:900}
+  .admin .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:8px}
+  .num{width:84px;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff}
+  .admin input[type="time"]{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#0b0e1a; color:#fff}
 </style>
 </head>
 <body>
@@ -100,19 +115,34 @@
       <div class="next" id="nextTimes">Prochaine fermeture : — • Prochaine ouverture : —</div>
       <div class="meta" id="modeMeta">Chargement…</div>
 
+      <!-- Planning 24h -->
+      <div class="sched" id="scheduleWrap">
+        <div class="next" style="margin-top:10px">Prochaines fenêtres (24 h)</div>
+        <div id="schedule"></div>
+      </div>
+
       <!-- Admin (caché par défaut, s’affiche après login) -->
       <div class="admin" id="adminPanel" style="display:none">
-        <div class="admin-row" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center">
-          <label for="openTime">Dernière ouverture (HH:MM) :</label>
+        <div class="row">
+          <label for="openTime"><strong>Dernière ouverture (HH:MM)</strong> :</label>
           <input type="time" id="openTime" step="60" />
         </div>
-        <div class="admin-row" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:8px">
+        <div class="row">
           <button class="btn primary" id="publishGlobal">Mettre à jour GLOBAL</button>
-          <button class="btn" id="togglePauseGlobal">Pause/Reprendre GLOBAL</button>
+          <button class="btn" id="togglePauseGlobal">Pause/Reprendre</button>
+          <button class="btn" id="forceOpenNow">Forcer : Hangar ouvert maintenant</button>
+          <button class="btn" id="forceClosedNow">Forcer : Hangar fermé maintenant</button>
           <button class="btn" id="reload">Recharger</button>
           <button class="btn" id="logout">Se déconnecter</button>
         </div>
-        <div class="meta">Indique l’heure <b>locale</b> de la dernière ouverture observée. Le site recalcule pour tous.</div>
+        <div class="row">
+          <span style="font-size:12px;opacity:.85">Calage express :</span>
+          <input class="num" type="number" id="minsToClose" min="0" max="65" placeholder="mins" />
+          <button class="btn" id="syncCloseIn">Fermeture dans X min</button>
+          <input class="num" type="number" id="minsToOpen" min="0" max="120" placeholder="mins" />
+          <button class="btn" id="syncOpenIn">Ouverture dans X min</button>
+        </div>
+        <div class="meta">Indique l’heure <b>locale</b> de la dernière ouverture observée, ou utilise les boutons de contrôle pour caler le cycle. Le site recalcule pour tous (ou local si API indisponible).</div>
       </div>
     </section>
 
@@ -170,7 +200,7 @@
 </div>
 
 <script>
-  /* ===== Cycle exact + LEDs analogiques ===== */
+  /* ===== Cycle + LEDs ===== */
   const OPEN_SEC   = 65*60;   // 65:00
   const CLOSED_SEC = 7201;    // ~120:01
   const CYCLE_SEC  = OPEN_SEC + CLOSED_SEC;
@@ -184,17 +214,27 @@
   const elNext=document.getElementById('nextTimes');
   const elMode=document.getElementById('modeMeta');
 
+  const scheduleDiv=document.getElementById('schedule');
+
   const adminPanel=document.getElementById('adminPanel');
   const inputTime=document.getElementById('openTime');
   const btnPublish=document.getElementById('publishGlobal');
   const btnPause=document.getElementById('togglePauseGlobal');
+  const btnForceOpen=document.getElementById('forceOpenNow');
+  const btnForceClosed=document.getElementById('forceClosedNow');
   const btnReload=document.getElementById('reload');
   const btnLogout=document.getElementById('logout');
+
+  const inputMinsToClose=document.getElementById('minsToClose');
+  const inputMinsToOpen=document.getElementById('minsToOpen');
+  const btnSyncCloseIn=document.getElementById('syncCloseIn');
+  const btnSyncOpenIn=document.getElementById('syncOpenIn');
 
   const modal=document.getElementById('modal');
   const pwdInput=document.getElementById('pwd');
   const doLoginBtn=document.getElementById('doLogin');
   const closeModal=document.getElementById('closeModal');
+  const secretLogo=document.getElementById('secretLogo');
 
   /* Privacy */
   const ppBtn=document.getElementById('ppBtn');
@@ -202,44 +242,66 @@
 
   /* ===== State global (API ou fallback) ===== */
   let cfg={anchor_iso:null, manual_offset_seconds:0, paused:false};
+  let isAdmin=false, adminPwd=null;
 
   /* ===== Utils ===== */
   const pad=n=>String(n).padStart(2,'0');
   const fmt=s=>{s=Math.max(0,Math.floor(s)); return `${pad(s/3600|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`;};
   const pretty=ms=>new Date(ms).toLocaleString('fr-FR',{dateStyle:'short', timeStyle:'short'});
+  const prettyTime=ms=>new Date(ms).toLocaleString('fr-FR',{dateStyle:'short', timeStyle:'short'});
   const toISO=ms=>new Date(ms - new Date().getTimezoneOffset()*60000).toISOString().replace('.000Z','Z');
   const anchorMs=()=>Date.parse(cfg.anchor_iso)+(cfg.manual_offset_seconds||0)*1000;
   const nextAfter=(startMs,stepMs,nowMs)=>(nowMs<startMs)?startMs:startMs+(Math.floor((nowMs-startMs)/stepMs)+1)*stepMs;
 
-  function setFallbackToNext1628(){
-    const now=new Date();
-    const next=new Date(now); next.setHours(16,28,0,0);
-    if(next.getTime()<=now.getTime()) next.setDate(next.getDate()+1); // prochaine 16:28 locale
-    cfg.anchor_iso = toISO(next.getTime());
-    cfg.manual_offset_seconds = 0;
-    elMode.textContent='Config locale : prochaine ouverture à 16:28 (fallback) • '+pretty(next.getTime());
+  function tryPostNewAnchor(iso){
+    // Tente un POST global, sinon applique localement
+    if(!isAdmin || !adminPwd){
+      cfg.anchor_iso=iso; cfg.manual_offset_seconds=0; render(true);
+      elMode.textContent='Ancre locale appliquée (non connecté). '+pretty(Date.parse(iso));
+      return;
+    }
+    fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({password:adminPwd,anchor_iso:iso,manual_offset_seconds:0,paused:false})})
+    .then(async r=>{
+      if(!r.ok){
+        if(r.status===401){ setAdminUI(false); alert('Mot de passe incorrect'); return; }
+        const t=await r.text().catch(()=> ''); alert('Échec: '+r.status+' '+t);
+        // fallback local
+        cfg.anchor_iso=iso; cfg.manual_offset_seconds=0; render(true);
+        return;
+      }
+      cfg=await r.json(); render(true);
+      elMode.textContent='Config globale chargée. Dernière MAJ globale : '+pretty(Date.parse(cfg.anchor_iso));
+    })
+    .catch(()=>{
+      // fallback local
+      cfg.anchor_iso=iso; cfg.manual_offset_seconds=0; render(true);
+      elMode.textContent='Ancre locale appliquée (réseau indisponible). '+pretty(Date.parse(iso));
+    });
   }
 
-  /* ===== LEDs : fermé 0→5 vertes (~24m) ; ouvert 5→0 (12m) + 5m black ===== */
+  /* ===== LEDs ===== */
   function greenCountClosed(remainSec){
-    const seg = CLOSED_SEC / DOTS;              // ~24 min / LED
-    let cnt = DOTS - Math.ceil(remainSec / seg); // 0..5 (5 juste avant ouverture)
+    const seg = CLOSED_SEC / DOTS;                 // ~24 min/LED
+    let cnt = DOTS - Math.ceil(remainSec / seg);   // 0..5 (5 juste avant ouverture)
     return Math.max(0, Math.min(DOTS, cnt));
   }
   function greenCountOpen(remainSec){
-    if (remainSec <= 5*60) return 0;            // 5 min finales sans LED (“black”)
-    const eff = Math.min(60*60, remainSec - 5*60); // 60 min LED-actives
+    if (remainSec <= 5*60) return 0;               // 5 dernières minutes : “black”
+    const eff = Math.min(60*60, remainSec - 5*60); // 60 min de LEDs actives
     return Math.max(0, Math.min(DOTS, Math.ceil(eff / (12*60))));
   }
 
   /* ===== Rendu ===== */
-  function render(){
+  let lastScheduleMinute = -1;
+  function render(forceSched=false){
     if(!cfg.anchor_iso){
       elClock.textContent='--:--:--';
       elStatus.className='status closed';
       elStatus.textContent='Initialisation…';
       elSub.textContent='Aucune ancre définie';
       elNext.textContent='—';
+      scheduleDiv.innerHTML='';
       return;
     }
     const now=Date.now();
@@ -260,6 +322,47 @@
     const nClose=nextAfter(anchorMs()+OPEN_SEC*1000, CYCLE_SEC*1000, now);
     const nOpen =nextAfter(anchorMs(),                CYCLE_SEC*1000, now);
     elNext.textContent = `Prochaine fermeture : ${pretty(nClose)} • Prochaine ouverture : ${pretty(nOpen)}`;
+
+    // Planning 24h : recalcul chaque minute ou si forcé
+    const minuteNow = new Date(now).getMinutes();
+    if (forceSched || minuteNow !== lastScheduleMinute){
+      lastScheduleMinute = minuteNow;
+      updateSchedule(now);
+    }
+  }
+
+  function updateSchedule(nowMs){
+    const rows=[];
+    const anchor=anchorMs();
+    // Début de la fenêtre courante (dernière ouverture passée)
+    const k = Math.floor((nowMs - anchor)/(CYCLE_SEC*1000));
+    let openStart = anchor + k*CYCLE_SEC*1000;
+    if (openStart > nowMs) openStart -= CYCLE_SEC*1000;
+
+    const horizon = nowMs + 24*3600*1000;
+
+    while (openStart < horizon){
+      const closeTime = openStart + OPEN_SEC*1000;
+      if (closeTime >= nowMs || openStart >= nowMs){
+        rows.push({open:openStart, close:closeTime});
+      }
+      openStart += CYCLE_SEC*1000;
+    }
+
+    // Rendu du tableau
+    let html = '<table><thead><tr><th>Statut</th><th>Heure locale</th></tr></thead><tbody>';
+    const curOpenStart = anchor + Math.floor((nowMs - anchor)/(CYCLE_SEC*1000))*CYCLE_SEC*1000;
+    const curClose = curOpenStart + OPEN_SEC*1000;
+    if (curOpenStart <= nowMs && nowMs < curClose){
+      // Ligne "fenêtre en cours"
+      html += `<tr><td><span class="tag on">Online (en cours)</span></td><td>Fermeture à ${prettyTime(curClose)}</td></tr>`;
+    }
+    for (const w of rows){
+      if (w.open > nowMs) html += `<tr><td><span class="tag on">Online</span></td><td>${prettyTime(w.open)}</td></tr>`;
+      if (w.close > nowMs) html += `<tr><td><span class="tag off">Offline</span></td><td>${prettyTime(w.close)}</td></tr>`;
+    }
+    html += '</tbody></table>';
+    scheduleDiv.innerHTML = html;
   }
 
   /* ===== API ===== */
@@ -271,46 +374,86 @@
       if(!cfg.anchor_iso){ setFallbackToNext1628(); }
       elMode.textContent='Config globale chargée. Dernière MAJ globale : '+pretty(Date.parse(cfg.anchor_iso));
       const d=new Date(); inputTime.value=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
-      render();
+      render(true);
     }catch(e){
       setFallbackToNext1628();
-      const d=new Date(); inputTime.value='16:28';
-      render();
+      inputTime.value='16:28';
+      render(true);
     }
   }
 
+  function setFallbackToNext1628(){
+    const now=new Date();
+    const next=new Date(now); next.setHours(16,28,0,0);
+    if(next.getTime()<=now.getTime()) next.setDate(next.getDate()+1); // prochaine 16:28 locale
+    cfg.anchor_iso = toISO(next.getTime());
+    cfg.manual_offset_seconds = 0;
+    elMode.textContent='Config locale (fallback) : prochaine ouverture à 16:28 • '+pretty(next.getTime());
+  }
+
   /* ===== Admin session ===== */
-  let isAdmin=false, adminPwd=null;
   function setAdminUI(v){ isAdmin=v; adminPanel.style.display=v?'flex':'none'; if(!v) adminPwd=null; }
 
-  const secretLogo = document.getElementById('secretLogo');
-  secretLogo.addEventListener('dblclick', ()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); });
-  document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='a'){ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } });
-  if (location.hash === '#admin'){ setTimeout(()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }, 50); }
+  secretLogo.addEventListener('dblclick', ()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); });   // double-clic sur le logo
+  document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='a'){ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); } }); // Ctrl+Shift+A
+  if (location.hash === '#admin'){ setTimeout(()=>{ modal.style.display='flex'; pwdInput.value=''; pwdInput.focus(); }, 50); } // URL …/#admin
 
   doLoginBtn.onclick= ()=>{ adminPwd=pwdInput.value.trim(); if(!adminPwd){ alert('Entre le mot de passe'); return; } setAdminUI(true); modal.style.display='none'; };
   closeModal.onclick=()=>{ modal.style.display='none'; };
   btnLogout.onclick=()=> setAdminUI(false);
 
-  document.getElementById('publishGlobal').onclick= async ()=>{
-    if(!isAdmin || !adminPwd){ modal.style.display='flex'; return; }
+  // HH:MM -> ISO (dernière occurrence passée)
+  function isoFromHHMM(hhmm){
+    const [hh,mm]=hhmm.split(':').map(Number); const now=new Date(); const d=new Date(now);
+    d.setHours(hh,mm,0,0); if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1);
+    return toISO(d.getTime());
+  }
+
+  btnPublish.onclick= async ()=>{
     const val=inputTime.value.trim(); if(!val) return alert('Indique HH:MM');
-    const [hh,mm]=val.split(':').map(Number); if(Number.isNaN(hh)||Number.isNaN(mm)) return alert('Heure invalide');
-    const now=new Date(); const d=new Date(now); d.setHours(hh,mm,0,0); if(d.getTime()>now.getTime()) d.setDate(d.getDate()-1);
-    const iso=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().replace('.000Z','Z');
-    const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:adminPwd,anchor_iso:iso,manual_offset_seconds:0,paused:false})});
-    if(!r.ok){ if(r.status===401){ setAdminUI(false); alert('Mot de passe incorrect'); return; } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
-    cfg=await r.json(); alert('✅ Mise à jour globale enregistrée'); elMode.textContent='Config globale chargée. Dernière MAJ globale : '+pretty(Date.parse(cfg.anchor_iso)); render();
+    tryPostNewAnchor( isoFromHHMM(val) );
   };
 
-  document.getElementById('togglePauseGlobal').onclick= async ()=>{
-    if(!isAdmin || !adminPwd){ modal.style.display='flex'; return; }
-    const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:adminPwd,anchor_iso:cfg.anchor_iso,manual_offset_seconds:cfg.manual_offset_seconds||0,paused:!cfg.paused})});
+  btnPause.onclick= async ()=>{
+    if(!isAdmin || !adminPwd){ cfg.paused=!cfg.paused; render(); return; }
+    const r=await fetch('/api/anchor',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({password:adminPwd,anchor_iso:cfg.anchor_iso,manual_offset_seconds:cfg.manual_offset_seconds||0,paused:!cfg.paused})});
     if(!r.ok){ if(r.status===401){ setAdminUI(false); alert('Mot de passe incorrect'); return; } const t=await r.text().catch(()=> ''); return alert('Échec: '+r.status+' '+t); }
-    cfg=await r.json(); render();
+    cfg=await r.json(); render(true);
   };
 
-  document.getElementById('reload').onclick= loadCfg;
+  btnReload.onclick= loadCfg;
+
+  // Forcer OU ouvert maintenant (ancre = maintenant)
+  btnForceOpen.onclick = ()=>{
+    const iso = toISO(Date.now());
+    tryPostNewAnchor(iso);
+  };
+
+  // Forcer FERME maintenant (ancre = maintenant - 65:00 - 1s → on entre en phase fermée)
+  btnForceClosed.onclick = ()=>{
+    const iso = toISO(Date.now() - OPEN_SEC*1000 - 1000);
+    tryPostNewAnchor(iso);
+  };
+
+  // Calage express : “Fermeture dans X minutes” (phase ouverte, reste X)
+  btnSyncCloseIn.onclick = ()=>{
+    const x = parseInt(inputMinsToClose.value,10);
+    if(Number.isNaN(x) || x<0 || x>65) return alert('Indique un nombre de minutes (0–65)');
+    const remain = x*60*1000;
+    const iso = toISO(Date.now() - (OPEN_SEC*1000 - remain)); // ancre = début d’ouverture courant
+    tryPostNewAnchor(iso);
+  };
+
+  // Calage express : “Ouverture dans X minutes” (phase fermée, reste X)
+  btnSyncOpenIn.onclick = ()=>{
+    const x = parseInt(inputMinsToOpen.value,10);
+    if(Number.isNaN(x) || x<0 || x>120) return alert('Indique un nombre de minutes (0–120)');
+    const remain = x*60*1000;
+    // total écoulé depuis l’ancre = CYCLE_SEC - remain
+    const iso = toISO(Date.now() - (CYCLE_SEC*1000 - remain));
+    tryPostNewAnchor(iso);
+  };
 
   /* ===== Privacy: toggle (ouvre/ferme) ===== */
   function setPrivacyVisibility(show){
