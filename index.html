@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Mammon Timer — Executive Hangar</title>
+<title>MAMMON TIMER</title>
 <meta name="color-scheme" content="dark">
 <style>
   :root{--bg:#0a0d14;--panel:#0b0f1aee;--panel-border:rgba(255,255,255,.08);
@@ -27,6 +27,17 @@
   .tag{padding:2px 8px;border-radius:999px;font-size:12px}
   .tag.on{background:rgba(34,197,94,.15);color:var(--ok);border:1px solid rgba(34,197,94,.5)}
   .tag.off{background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.5)}
+  .note-green{color:var(--ok);font-size:13px;margin-top:6px}
+  /* Privacy */
+  .pp-cta-wrap{margin:20px 0;display:flex;justify-content:center}
+  .pp-cta{padding:9px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0f172a;color:#fff;text-decoration:none}
+  .privacy{display:none;margin-top:12px}
+  .privacy .box{background:var(--panel);border:1px solid var(--panel-border);border-radius:12px;padding:14px}
+  /* Admin */
+  .btn{padding:8px 12px;border-radius:10px;border:1px solid var(--panel-border);background:#0f172a;color:#fff;cursor:pointer}
+  .admin{margin-top:14px}
+  .admin .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .admin input[type="time"]{padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:#0b0e1a;color:#fff}
   /* Nain */
   .t-head{position:fixed;right:14px;bottom:14px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.2);padding:6px 10px;border-radius:12px;display:flex;align-items:center;gap:8px;z-index:5}
   .t-head img{width:64px;height:64px;border-radius:10px;object-fit:cover;cursor:pointer}
@@ -37,7 +48,7 @@
 <body>
 <div class="wm"></div>
 <div class="wrap">
-  <h1>Executive Hangar Status</h1>
+  <h1>MAMMON TIMER</h1>
   <div id="statusBig" class="big closed">OFFLINE</div>
   <div class="until">Time until next change: <span id="until">--:--</span></div>
   <div class="row" id="leds">
@@ -47,9 +58,30 @@
   <div class="status closed" id="status">Hangar Closed</div>
   <div class="until" id="subtitle">Next transition in --:--:--</div>
   <div class="until" id="nextTimes">Next Close: — • Next Open: —</div>
+  <div class="note-green">Basé sur la mise à jour Star Citizen Patch 4.3.0-LIVE (Hotfix 10188864)</div>
   <div class="sched"><h3>Schedule (24h)</h3><div id="schedule"></div></div>
+  <!-- Admin caché -->
+  <div class="admin" id="adminPanel" style="display:none">
+    <div class="row">
+      <label for="openTime"><b>Dernière ouverture (HH:MM)</b> :</label>
+      <input type="time" id="openTime" step="60" />
+      <button class="btn" id="publish">Appliquer</button>
+      <button class="btn" id="togglePause">Pause/Reprendre</button>
+      <button class="btn" id="logout">Se déconnecter</button>
+    </div>
+  </div>
+  <!-- Privacy -->
+  <div class="pp-cta-wrap">
+    <a href="#privacy" id="ppBtn" class="pp-cta">Politique de confidentialité</a>
+  </div>
+  <section class="privacy" id="privacy">
+    <div class="box">
+      <h2>Politique de confidentialité</h2>
+      <p><em>Date d’entrée en vigueur : 9 septembre 2025</em></p>
+      <p>Nous ne collectons, ne vendons ni ne partageons aucune donnée personnelle. Les préférences sont stockées localement dans votre navigateur. Aucun cookie actuellement.</p>
+    </div>
+  </section>
 </div>
-
 <!-- Widget Nain -->
 <div class="t-head" id="tHead">
   <img id="tHeadImg" src="/assets/nain.png" alt="nain" title="résous le problème capillaire">
@@ -57,45 +89,36 @@
   <audio id="tSong" src="/assets/confused-song.mp3" preload="auto"></audio>
 </div>
 <div class="t-killed" id="tKilledMsg">— échec —</div>
-
+<!-- Modal Admin -->
+<div class="modal" id="modal" style="display:none">
+  <div class="box" style="background:#0f1220;border:1px solid var(--panel-border);border-radius:12px;padding:16px;max-width:360px;margin:auto">
+    <h3>Connexion admin</h3>
+    <input type="password" id="pwd" placeholder="Mot de passe" style="width:100%;padding:8px;margin:8px 0">
+    <button class="btn" id="doLogin">OK</button>
+    <button class="btn" id="closeModal">Fermer</button>
+  </div>
+</div>
 <script>
+/* === Cycle === */
 const OPEN_SEC=65*60,CLOSED_SEC=2*3600+1,CYCLE_SEC=OPEN_SEC+CLOSED_SEC,CYCLE_MS=CYCLE_SEC*1000,DOTS=5;
 const ANCHOR=new Date();ANCHOR.setHours(20,14,6,0);const anchor_ms=ANCHOR.getTime();
-const elClock=document.getElementById('clock'),elUntil=document.getElementById('until'),
-elStatus=document.getElementById('status'),elStatusBig=document.getElementById('statusBig'),
-elSub=document.getElementById('subtitle'),elNext=document.getElementById('nextTimes'),
-leds=document.getElementById('leds').children,scheduleDiv=document.getElementById('schedule');
-const tHead=document.getElementById('tHead'),tHeadImg=document.getElementById('tHeadImg'),
-tKilledMsg=document.getElementById('tKilledMsg'),tSong=document.getElementById('tSong');
-const pad=n=>String(n).padStart(2,'0'),fmtHMS=s=>`${pad(s/3600|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`,
-fmtMMSS=s=>`${Math.floor(s/60)}:${pad(s%60)}`,pretty=ms=>new Date(ms).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'medium'});
+const elClock=clock,elUntil=until,elStatus=status,elStatusBig=statusBig,elSub=subtitle,elNext=nextTimes,leds=document.getElementById('leds').children,scheduleDiv=schedule;
+const adminPanel=adminPanel,secretLogo=document.querySelector('h1'),modal=modal,pwdInput=pwd,doLoginBtn=doLogin,closeModal=closeModal,inputTime=openTime,btnPublish=publish,btnPause=togglePause,btnLogout=logout;
+const ppBtn=ppBtn,ppSection=privacy,tHead=tHead,tHeadImg=tHeadImg,tKilledMsg=tKilledMsg,tSong=tSong;
+let cfg={paused:false};const pad=n=>String(n).padStart(2,'0'),fmtHMS=s=>`${pad(s/3600|0)}:${pad((s%3600)/60|0)}:${pad(s%60)}`,fmtMMSS=s=>`${Math.floor(s/60)}:${pad(s%60)}`,pretty=ms=>new Date(ms).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'medium'});
 function greensClosed(r){const seg=CLOSED_SEC/DOTS;return Math.max(0,Math.min(DOTS,DOTS-Math.ceil(r/seg)));}
 function greensOpen(r){if(r<=300)return 0;const eff=Math.min(3600,r-300);return Math.min(DOTS,Math.ceil(eff/720));}
 function nextAfter(start,step,now){return now<start?start:start+(Math.floor((now-start)/step)+1)*step;}
-let lastMin=-1;
-function render(force=false){
-  const now=Date.now(),elapsed=((now-anchor_ms)/1000%CYCLE_SEC+CYCLE_SEC)%CYCLE_SEC,isOpen=elapsed<OPEN_SEC;
-  const phaseSec=isOpen?OPEN_SEC:CLOSED_SEC,phaseElapsed=isOpen?elapsed:(elapsed-OPEN_SEC),remain=phaseSec-phaseElapsed;
-  elUntil.textContent=fmtMMSS(remain);elClock.textContent=fmtHMS(remain);
-  elStatus.textContent='Hangar '+(isOpen?'Open':'Closed');elStatus.className='status '+(isOpen?'open':'closed');
-  elStatusBig.textContent=isOpen?'ONLINE':'OFFLINE';elStatusBig.className='big '+(isOpen?'open':'closed');
-  elSub.textContent='Next transition ('+(isOpen?'close':'open')+') in '+fmtHMS(remain);
-  const g=isOpen?greensOpen(remain):greensClosed(remain);for(let i=0;i<DOTS;i++)leds[i].className='led '+(i<g?'g':'r');
-  const nextOpen=nextAfter(anchor_ms,CYCLE_MS,now),nextClose=nextAfter(anchor_ms+OPEN_SEC*1000,CYCLE_MS,now);
-  elNext.textContent=`Next Close: ${pretty(nextClose)} • Next Open: ${pretty(nextOpen)}`;
-  const m=new Date(now).getMinutes();if(force||m!==lastMin){lastMin=m;updateSchedule(now);}
-}
-function updateSchedule(nowMs){
-  const rows=[],horizon=nowMs+24*3600*1000;let n=Math.floor((nowMs-anchor_ms)/CYCLE_MS),open=anchor_ms+n*CYCLE_MS;
-  if(open>nowMs){n--;open-=CYCLE_MS;}while(open<horizon){const cyc=49+Math.round((open-anchor_ms)/CYCLE_MS),close=open+OPEN_SEC*1000;
-    if(open>=nowMs)rows.push({cyc,type:'on',at:open});if(close>=nowMs)rows.push({cyc,type:'off',at:close});open+=CYCLE_MS;}
-  rows.sort((a,b)=>a.at-b.at);let html='<table><thead><tr><th>Cycle</th><th>Status</th><th>Local Time</th></tr></thead><tbody>';
-  for(const r of rows){html+=`<tr><td>${r.cyc}</td><td><span class="tag ${r.type==='on'?'on':'off'}">${r.type==='on'?'Online':'Offline'}</span></td><td>${pretty(r.at)}</td></tr>`;}
-  html+='</tbody></table>';scheduleDiv.innerHTML=html;
-}
+let lastMin=-1;function render(force=false){const now=Date.now(),elapsed=((now-anchor_ms)/1000%CYCLE_SEC+CYCLE_SEC)%CYCLE_SEC,isOpen=elapsed<OPEN_SEC,phaseSec=isOpen?OPEN_SEC:CLOSED_SEC,phaseElapsed=isOpen?elapsed:(elapsed-OPEN_SEC),remain=phaseSec-phaseElapsed;
+elUntil.textContent=fmtMMSS(remain);elClock.textContent=fmtHMS(remain);elStatus.textContent='Hangar '+(isOpen?'Open':'Closed');elStatus.className='status '+(isOpen?'open':'closed');elStatusBig.textContent=isOpen?'ONLINE':'OFFLINE';elStatusBig.className='big '+(isOpen?'open':'closed');elSub.textContent='Next transition ('+(isOpen?'close':'open')+') in '+fmtHMS(remain);const g=isOpen?greensOpen(remain):greensClosed(remain);for(let i=0;i<DOTS;i++)leds[i].className='led '+(i<g?'g':'r');const nextOpen=nextAfter(anchor_ms,CYCLE_MS,now),nextClose=nextAfter(anchor_ms+OPEN_SEC*1000,CYCLE_MS,now);elNext.textContent=`Next Close: ${pretty(nextClose)} • Next Open: ${pretty(nextOpen)}`;const m=new Date(now).getMinutes();if(force||m!==lastMin){lastMin=m;updateSchedule(now);}}
+function updateSchedule(nowMs){const rows=[],horizon=nowMs+86400000;let n=Math.floor((nowMs-anchor_ms)/CYCLE_MS),open=anchor_ms+n*CYCLE_MS;if(open>nowMs){n--;open-=CYCLE_MS;}while(open<horizon){const cyc=49+Math.round((open-anchor_ms)/CYCLE_MS),close=open+OPEN_SEC*1000;if(open>=nowMs)rows.push({cyc,type:'on',at:open});if(close>=nowMs)rows.push({cyc,type:'off',at:close});open+=CYCLE_MS;}rows.sort((a,b)=>a.at-b.at);let html='<table><thead><tr><th>Cycle</th><th>Status</th><th>Local Time</th></tr></thead><tbody>';for(const r of rows){html+=`<tr><td>${r.cyc}</td><td><span class="tag ${r.type==='on'?'on':'off'}">${r.type==='on'?'Online':'Offline'}</span></td><td>${pretty(r.at)}</td></tr>`;}html+='</tbody></table>';scheduleDiv.innerHTML=html;}
+ppBtn.onclick=e=>{e.preventDefault();ppSection.style.display=ppSection.style.display==='block'?'none':'block';};
+function setAdmin(v){adminPanel.style.display=v?'block':'none';}
+secretLogo.ondblclick=()=>{modal.style.display='block';pwdInput.focus();};document.onkeydown=e=>{if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='a')modal.style.display='block';};if(location.hash==='#admin'){modal.style.display='block';}
+doLoginBtn.onclick=()=>{if(!pwdInput.value)return;setAdmin(true);modal.style.display='none';};closeModal.onclick=()=>modal.style.display='none';btnLogout.onclick=()=>setAdmin(false);btnPublish.onclick=()=>{if(!inputTime.value)return;const [hh,mm]=inputTime.value.split(':').map(Number);const d=new Date();d.setHours(hh,mm,6,0);if(d.getTime()>Date.now())d.setDate(d.getDate()-1);render(true);};btnPause.onclick=()=>{cfg.paused=!cfg.paused;};
 function setNainKilled(k){tHead.style.display=k?'none':'flex';tKilledMsg.style.display=k?'block':'none';}
 tHeadImg.onclick=async()=>{try{await tSong.play();}catch{}setNainKilled(true);};setNainKilled(false);
-render(true);setInterval(render,1000);
+render(true);setInterval(()=>{if(!cfg.paused)render();},1000);
 </script>
 </body>
 </html>
