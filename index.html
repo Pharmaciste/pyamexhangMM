@@ -1,148 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mammon Timer — Executive Hangar</title>
+<meta name="color-scheme" content="dark">
+<style>
+  :root{
+    --bg:#0a0a0a; --panel:#111111ee; --panel-border:rgba(255,255,255,.08);
+    --text:#fefce8; --ok:#22c55e; --danger:#ef4444;
+    --accent:#facc15; --accent2:#fde047;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:16px/1.55 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+
+  .wm{position:fixed;inset:0;opacity:.10;pointer-events:none}
+  .wrap{max-width:980px;margin:0 auto;padding:20px;position:relative;z-index:1}
+
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand-logo{width:28px;height:28px;background:#000;border-radius:6px;box-shadow:inset 0 0 0 2px #333}
+  .brand h1{font-size:20px;font-weight:900;margin:0;color:var(--accent)}
+  .badge{font-size:11px;font-weight:900;padding:4px 8px;border-radius:999px;
+         background:#000;color:var(--accent);border:1px solid var(--accent)}
+  .patch{font-size:13px;color:var(--ok)}
+  .patch-date{font-size:12px;opacity:.85;margin-top:2px}
+
+  .discord-bar{background:#1a1a1a;border:1px solid rgba(255,255,255,.1);border-radius:12px;
+               padding:10px 14px;margin-bottom:16px;text-align:center}
+  .discord-bar a{color:var(--accent2);font-weight:700;text-decoration:none}
+
+  .panel{background:var(--panel);border:1px solid var(--panel-border);border-radius:14px;padding:16px}
+  h2{font-size:22px;font-weight:900;margin:0 0 10px;color:var(--accent)}
+  .big{font:64px/1.1 ui-monospace,monospace;margin:10px 0}
+  .big.open{color:var(--ok)} .big.closed{color:var(--danger)}
+  .until{font:14px ui-monospace,monospace;opacity:.95;margin:6px 0}
+  .clock{font:56px/1 ui-monospace,monospace;margin:10px 0;color:var(--accent)}
+  .status{font-weight:900}
+  .status.open{color:var(--ok)} .status.closed{color:var(--danger)}
+
+  .row{display:flex;gap:10px;justify-content:center;margin:12px 0}
+  .led{width:22px;height:22px;border-radius:7px;background:#222;border:1px solid rgba(0,0,0,.6)}
+  .led.g{background:var(--ok);box-shadow:0 0 14px rgba(34,197,94,.7)}
+  .led.r{background:var(--danger);box-shadow:0 0 12px rgba(239,68,68,.6)}
+
+  .sched{margin-top:24px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:8px 10px;border-top:1px solid rgba(255,255,255,.1);vertical-align:top}
+  th{color:var(--accent);text-align:left}
+  .cycle-cell{width:80px;font-weight:700;color:#e5e7eb}
+  .status-cell{width:140px}
+  .time-cell{white-space:nowrap}
+  .tag{padding:2px 8px;border-radius:999px;font-size:12px}
+  .tag.on{background:rgba(34,197,94,.12);color:var(--ok);border:1px solid rgba(34,197,94,.45)}
+  .tag.off{background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.45)}
+</style>
+</head>
+<body>
+<div class="wm" aria-hidden="true"></div>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="brand-logo" aria-hidden="true"></div>
+      <h1>MAMMON TIMER</h1>
+      <span class="badge">LIVE</span>
+    </div>
+    <div>
+      <div class="patch">Updated for Star Citizen Patch 4.3.0-LIVE (Hotfix 10188864)</div>
+      <div class="patch-date" id="patchDate"></div>
+    </div>
+  </header>
+
+  <div class="discord-bar">
+    🚀 Want to join <b>MAMMON</b>? <a href="https://discord.gg/aUBDScHG" target="_blank" rel="noopener">Join our Discord here!</a>
+  </div>
+
+  <section class="panel">
+    <h2>Executive Hangar Timer</h2>
+
+    <div id="statusBig" class="big closed">OFFLINE</div>
+
+    <div class="until">Time until next change: <span id="until">--:--:--</span></div>
+
+    <div class="row" id="leds">
+      <div class="led r"></div><div class="led r"></div><div class="led r"></div><div class="led r"></div><div class="led r"></div>
+    </div>
+
+    <div class="clock" id="clock">--:--:--</div>
+    <div class="status closed" id="status">Hangar Closed</div>
+    <div class="until" id="subtitle">Next transition in --:--</div>
+    <div class="until" id="nextTimes">Next Close: — • Next Open: —</div>
+
+    <div class="sched">
+      <h3>Schedule (24h)</h3>
+      <div id="schedule"></div>
+    </div>
+  </section>
+</div>
+
 <script>
-/* ====== Config ====== */
-const OPEN_SEC   = 65 * 60;           // 65:00
-const CLOSED_SEC = 2 * 3600 + 1;      // 2:00:01
-const CYCLE_SEC  = OPEN_SEC + CLOSED_SEC;
-const CYCLE_MS   = CYCLE_SEC * 1000;
-const DOTS = 5;
+(function(){
+  /* ====== Paramètres du cycle ====== */
+  var OPEN_SEC   = 65*60;            // 65:00
+  var CLOSED_SEC = 2*3600 + 1;       // 2:00:01
+  var CYCLE_SEC  = OPEN_SEC + CLOSED_SEC;
+  var CYCLE_MS   = CYCLE_SEC * 1000;
+  var DOTS = 5;
 
-/* === Point d’ancrage + base de numérotation ===
-   - ANCHOR = aujourd’hui 20:14:06 (heure locale)
-   - BASE_CYCLE = numéro à afficher pour la 1re ouverture >= ANCHOR
-     (57 pour coller à ta capture). Change-le si besoin. */
-const ANCHOR = new Date();
-ANCHOR.setHours(20, 14, 6, 0);
-const anchor_ms = ANCHOR.getTime();
-const BASE_CYCLE = 57;
+  /* ====== Rebase sur la capture ======
+     Cycle 57 -> Online le 10/09/2025 20:54:14 (heure locale navigateur)
+     Puis cycles qui s'enchaînent sans fin. */
+  var BASE_CYCLE = 57;                             // ⬅️ À ajuster si besoin
+  var ANCHOR = new Date(2025, 8, 10, 20, 54, 14);  // ⬅️ À ajuster si besoin (YYYY, M-1, D, h, m, s)
+  var anchor_ms = ANCHOR.getTime();
 
-/* DOM */
-const elClock     = document.getElementById('clock');
-const elUntil     = document.getElementById('until');
-const elStatus    = document.getElementById('status');
-const elStatusBig = document.getElementById('statusBig');
-const elSub       = document.getElementById('subtitle');
-const elNext      = document.getElementById('nextTimes');
-const ledsWrap    = document.getElementById('leds');
-const leds        = ledsWrap.children;
-const scheduleDiv = document.getElementById('schedule');
-const patchDate   = document.getElementById('patchDate');
+  /* ====== DOM ====== */
+  var elClock     = document.getElementById('clock');
+  var elUntil     = document.getElementById('until');
+  var elStatus    = document.getElementById('status');
+  var elStatusBig = document.getElementById('statusBig');
+  var elSub       = document.getElementById('subtitle');
+  var elNext      = document.getElementById('nextTimes');
+  var ledsWrap    = document.getElementById('leds');
+  var leds        = ledsWrap ? ledsWrap.children : [];
+  var scheduleDiv = document.getElementById('schedule');
+  var patchDate   = document.getElementById('patchDate');
 
-/* Utils */
-const pad = n => String(n).padStart(2,'0');
-const fmtHMS = s => { s = Math.floor(s); return `${pad((s/3600)|0)}:${pad(((s%3600)/60)|0)}:${pad(s%60)}`; };
-const fmtMMSS = s => { s = Math.floor(s); return `${pad((s/60)|0)}:${pad(s%60)}`; };
-const pretty = ms => new Date(ms).toLocaleString('en-GB', { dateStyle:'short', timeStyle:'medium' });
-const clamp  = (v,a,b)=>Math.max(a,Math.min(b,v));
+  /* ====== Utils ====== */
+  function pad(n){ n = Math.floor(n); return (n<10?'0':'')+n; }
+  function fmtHMS(s){ s = Math.floor(s); return pad((s/3600)|0)+':'+pad(((s%3600)/60)|0)+':'+pad(s%60); }
+  function fmtMMSS(s){ s = Math.floor(s); return pad((s/60)|0)+':'+pad(s%60); }
+  function pretty(ms){ return new Date(ms).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'medium'}); }
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
 
-/* LEDs: nombre de vert restant (le reste en rouge) */
-function ledCount(remain, isOpen){
-  if(isOpen){
-    if(remain <= 300) return 0;                   // dernières 5 min -> tout rouge
-    const eff = Math.min(3600, remain - 300);     // fenêtre 60 min
-    return clamp(Math.ceil(eff / (60*12)), 0, DOTS); // ~12 min/LED
-  }else{
-    const seg = CLOSED_SEC / DOTS;                // ~24 min/LED
-    return clamp(DOTS - Math.ceil(remain/seg), 0, DOTS);
-  }
-}
-function nextAfter(startMs, stepMs, nowMs){
-  return nowMs < startMs ? startMs : startMs + (Math.floor((nowMs - startMs)/stepMs) + 1) * stepMs;
-}
-
-/* Numéro de cycle pour un début d'OUVERTURE donné */
-function cycleNumberFor(openStartMs){
-  const idx = Math.floor((openStartMs - anchor_ms) / CYCLE_MS); // 0,1,2…
-  return BASE_CYCLE + idx;
-}
-
-/* Rendu “live” */
-let lastMinute = -1;
-function render(force=false){
-  const now = Date.now();
-
-  // Où en sommes-nous dans le cycle ?
-  const elapsed = (((now - anchor_ms)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
-  const isOpen = elapsed < OPEN_SEC;
-
-  const phaseSec     = isOpen ? OPEN_SEC : CLOSED_SEC;
-  const phaseElapsed = isOpen ? elapsed   : (elapsed - OPEN_SEC);
-  const remain       = phaseSec - phaseElapsed;
-
-  // Timers
-  elUntil.textContent = fmtHMS(remain);
-  elClock.textContent = fmtHMS(remain);
-  elSub.textContent   = `Next transition (${isOpen ? 'close' : 'open'}) in ${fmtMMSS(remain)}`;
-
-  // Statut
-  elStatus.textContent = `Hangar ${isOpen ? 'Open' : 'Closed'}`;
-  elStatus.className   = `status ${isOpen ? 'open' : 'closed'}`;
-  elStatusBig.textContent = isOpen ? 'ONLINE' : 'OFFLINE';
-  elStatusBig.className   = `big ${isOpen ? 'open' : 'closed'}`;
-
-  // LEDs
-  const g = ledCount(remain, isOpen);
-  for(let i=0;i<DOTS;i++) leds[i].className = 'led ' + (i < g ? 'g' : 'r');
-
-  // Prochains événements (ouver/fermet)
-  const nextOpenMs  = nextAfter(anchor_ms,                CYCLE_MS, now);
-  const nextCloseMs = nextAfter(anchor_ms + OPEN_SEC*1000, CYCLE_MS, now);
-  elNext.textContent = `Next Close: ${pretty(nextCloseMs)} • Next Open: ${pretty(nextOpenMs)}`;
-
-  // Tableau — on le régénère au changement de minute (suffisant) ou forcé
-  const m = new Date(now).getMinutes();
-  if(force || m !== lastMinute){
-    lastMinute = m;
-    updateSchedule(now);
-  }
-}
-
-/* Tableau des 24 prochaines heures (supprime ce qui est passé) */
-function updateSchedule(nowMs){
-  const rows = [];
-  const horizon = nowMs + 24*3600*1000;
-
-  // Trouver le début d’ouverture le plus récent <= maintenant
-  let n = Math.floor((nowMs - anchor_ms) / CYCLE_MS);
-  let openStart = anchor_ms + n * CYCLE_MS;
-  if(openStart > nowMs){ n--; openStart -= CYCLE_MS; }
-
-  while(openStart < horizon){
-    const closeTime = openStart + OPEN_SEC*1000;
-
-    // On ne garde que ce qui n’est pas complètement passé
-    if(closeTime >= nowMs){
-      rows.push({
-        cycle: cycleNumberFor(openStart),
-        onAt:  openStart,
-        offAt: closeTime
-      });
+  function ledCount(remain,isOpen){
+    if(isOpen){
+      if(remain<=300) return 0;
+      var eff = Math.min(3600, remain-300);
+      return clamp(Math.ceil(eff/(60*12)), 0, DOTS); // ~12 min par LED
+    }else{
+      var seg = CLOSED_SEC/DOTS;                      // ~24 min par LED
+      return clamp(DOTS - Math.ceil(remain/seg), 0, DOTS);
     }
-    openStart += CYCLE_MS;
+  }
+  function nextAfter(startMs, stepMs, nowMs){
+    return nowMs < startMs ? startMs : startMs + (Math.floor((nowMs - startMs)/stepMs) + 1) * stepMs;
+  }
+  function cycleNumberFor(openStartMs){
+    var idx = Math.floor((openStartMs - anchor_ms) / CYCLE_MS); // 0,1,2…
+    return BASE_CYCLE + idx;
+  }
+  function safeSet(el, text){ if(el) el.textContent = text; }
+  function safeClass(el, cls){ if(el) el.className = cls; }
+
+  /* ====== Rendu live ====== */
+  var lastMinute = -1;
+
+  function render(force){
+    var now = Date.now();
+
+    // Position dans le cycle infini (modulo)
+    var elapsed = (((now - anchor_ms)/1000) % CYCLE_SEC + CYCLE_SEC) % CYCLE_SEC;
+    var isOpen  = elapsed < OPEN_SEC;
+
+    var phaseSec     = isOpen ? OPEN_SEC : CLOSED_SEC;
+    var phaseElapsed = isOpen ? elapsed   : (elapsed - OPEN_SEC);
+    var remain       = phaseSec - phaseElapsed;
+
+    // Timers
+    safeSet(elUntil, fmtHMS(remain));
+    safeSet(elClock, fmtHMS(remain));
+    safeSet(elSub, 'Next transition ('+(isOpen?'close':'open')+') in '+fmtMMSS(remain));
+
+    // Statut
+    safeSet(elStatus, 'Hangar '+(isOpen?'Open':'Closed'));
+    safeClass(elStatus, 'status '+(isOpen?'open':'closed'));
+    safeSet(elStatusBig, isOpen?'ONLINE':'OFFLINE');
+    safeClass(elStatusBig, 'big '+(isOpen?'open':'closed'));
+
+    // LEDs
+    var g = ledCount(remain, isOpen);
+    for(var i=0;i<DOTS;i++){
+      if(leds[i]) leds[i].className = 'led ' + (i<g ? 'g' : 'r');
+    }
+
+    // Prochains événements
+    var nextOpenMs  = nextAfter(anchor_ms,                 CYCLE_MS, now);
+    var nextCloseMs = nextAfter(anchor_ms + OPEN_SEC*1000, CYCLE_MS, now);
+    safeSet(elNext, 'Next Close: '+pretty(nextCloseMs)+' • Next Open: '+pretty(nextOpenMs));
+
+    // Mise à jour du tableau une fois par minute (ou forcée)
+    var m = new Date(now).getMinutes();
+    if(force || m !== lastMinute){
+      lastMinute = m;
+      updateSchedule(now);
+    }
   }
 
-  // Build HTML
-  let html = '<table><thead><tr><th class="cycle-cell">Cycle</th><th class="status-cell">Status</th><th class="time-cell">Local Time</th></tr></thead><tbody>';
-  for(const r of rows){
-    html += `
-      <tr>
-        <td class="cycle-cell">${r.cycle}</td>
-        <td class="status-cell"><span class="tag on">Online</span></td>
-        <td class="time-cell">${pretty(r.onAt)}</td>
-      </tr>
-      <tr>
-        <td class="cycle-cell"></td>
-        <td class="status-cell"><span class="tag off">Offline</span></td>
-        <td class="time-cell">${pretty(r.offAt)}</td>
-      </tr>`;
+  /* ====== Tableau des 24 prochaines heures ====== */
+  function updateSchedule(nowMs){
+    var rows = [];
+    var horizon = nowMs + 24*3600*1000;
+
+    // Trouver le début d'ouverture le plus récent <= maintenant
+    var n = Math.floor((nowMs - anchor_ms) / CYCLE_MS);
+    var openStart = anchor_ms + n * CYCLE_MS;
+    if(openStart > nowMs){ n--; openStart -= CYCLE_MS; }
+
+    while(openStart < horizon){
+      var closeTime = openStart + OPEN_SEC*1000;
+
+      // Garder ce qui n'est pas entièrement passé
+      if(closeTime >= nowMs){
+        rows.push({ cycle: cycleNumberFor(openStart), onAt: openStart, offAt: closeTime });
+      }
+      openStart += CYCLE_MS;
+    }
+
+    var html = '<table><thead><tr><th class="cycle-cell">Cycle</th><th class="status-cell">Status</th><th class="time-cell">Local Time</th></tr></thead><tbody>';
+    for(var i=0;i<rows.length;i++){
+      var r = rows[i];
+      html += '<tr>'
+            +   '<td class="cycle-cell">'+r.cycle+'</td>'
+            +   '<td class="status-cell"><span class="tag on">Online</span></td>'
+            +   '<td class="time-cell">'+pretty(r.onAt)+'</td>'
+            + '</tr>'
+            + '<tr>'
+            +   '<td class="cycle-cell"></td>'
+            +   '<td class="status-cell"><span class="tag off">Offline</span></td>'
+            +   '<td class="time-cell">'+pretty(r.offAt)+'</td>'
+            + '</tr>';
+    }
+    html += '</tbody></table>';
+    if(scheduleDiv) scheduleDiv.innerHTML = html;
   }
-  html += '</tbody></table>';
-  scheduleDiv.innerHTML = html;
-}
 
-/* Patch date (local) */
-patchDate.textContent = 'Site updated: ' + new Date().toLocaleString();
+  /* Patch date (local) */
+  if(patchDate) patchDate.textContent = 'Site updated: ' + new Date().toLocaleString();
 
-/* Boot */
-render(true);
-setInterval(render, 1000);
+  /* Boot */
+  render(true);
+  setInterval(render, 1000);
+})();
 </script>
+</body>
+</html>
